@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>TruckTurn.AutoCAD2021_2024</AssemblyName>
+    <AssemblyTitle>TruckTurn for AutoCAD 2021–2024</AssemblyTitle>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AutoCAD.NET" Version="24.0.0" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+</Project>

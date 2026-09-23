@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <AssemblyName>TruckTurn.AutoCAD2025_2026</AssemblyName>
+    <AssemblyTitle>TruckTurn for AutoCAD 2025–2026</AssemblyTitle>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AutoCAD.NET" Version="25.0.1" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

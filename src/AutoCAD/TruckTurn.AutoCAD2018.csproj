@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net46</TargetFramework>
+    <AssemblyName>TruckTurn.AutoCAD2018</AssemblyName>
+    <AssemblyTitle>TruckTurn for AutoCAD 2018</AssemblyTitle>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AutoCAD.NET" Version="22.0.0" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net46" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="System.ValueTuple" Version="4.5.0" PrivateAssets="all" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net47</TargetFramework>
+    <AssemblyName>TruckTurn.AutoCAD2019_2020</AssemblyName>
+    <AssemblyTitle>TruckTurn for AutoCAD 2019–2020</AssemblyTitle>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AutoCAD.NET" Version="23.0.0" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net47" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+</Project>

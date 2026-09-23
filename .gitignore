@@ -1,0 +1,24 @@
+**/bin/
+**/obj/
+**/.vs/
+**/TestResults/
+**/*.user
+**/*.suo
+
+# CAD SDK binaries are compile-time dependencies supplied by their owners.
+src/GstarCAD/lib/
+src/GstarCAD/lib2025/
+**/AcMgd.dll
+**/AcDbMgd.dll
+**/AcCoreMgd.dll
+**/GcMgd.dll
+**/GcDbMgd.dll
+**/GcCoreMgd.dll
+
+# Local build caches and diagnostics.
+.cache/
+.tools/
+*.pdb
+*.log
+Verify*.svg
+_radii_dump.csv

@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- GstarCAD 2026 的 .NET API 基于 .NET 8 (net8.0)，不是 .NET Framework 4.x -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- 选型窗口使用 WinForms 弹窗，需要启用 Windows 桌面（WinForms）工作负载 -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <OutputType>Library</OutputType>
+    <RootNamespace>TruckTurn</RootNamespace>
+    <AssemblyName>TruckTurn</AssemblyName>
+    <!-- 关闭隐式 using 与可空，保持与原代码一致 -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- 自动包含目录下全部 .cs，避免漏写 Compile 项 -->
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <!-- 生成 DLL 供 NETLOAD 加载 -->
+    <AssemblyTitle>货车转弯路径模拟插件</AssemblyTitle>
+    <Product>TruckTurn</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      浩辰CAD 2026 的托管程序集是 GcMgd / GcDbMgd / GcCoreMgd（命名空间 Gssoft.Gscad.*）。
+      HintPath 使用交接包内的相对 lib 目录，避免绑定某台电脑的浩辰安装路径。
+      Private=false：不把这三个 DLL 拷到输出目录，NETLOAD 时由浩辰CAD 自己从其安装目录加载。
+    -->
+    <Reference Include="GcMgd">
+      <HintPath>..\lib\GcMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GcDbMgd">
+      <HintPath>..\lib\GcDbMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GcCoreMgd">
+      <HintPath>..\lib\GcCoreMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

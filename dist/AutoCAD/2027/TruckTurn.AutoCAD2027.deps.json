@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "TruckTurn.AutoCAD2027/5.3.0": {
+        "runtime": {
+          "TruckTurn.AutoCAD2027.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "TruckTurn.AutoCAD2027/5.3.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>TruckTurn</RootNamespace>
+    <AssemblyName>TruckTurn.Verify</AssemblyName>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <!-- 关闭默认编译项：只编译下面显式列出的文件，避免把本地旧副本卷进来 -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0414;CS0649;CS0169</NoWarn>
+
+    <!-- 本机 NuGet 环境缺陷绕行（详见 开发日志.md「附：通用编译命令」）：
+         该 shell 缺 ProgramFiles(x86) 等环境变量，NuGet 的 GetFolderPath 会抛
+         "Value cannot be null (Parameter 'path1')"。Exe 项目在 GenerateRuntimeConfigurationFiles
+         任务里也要读 project.assets.json，同样会撞这个缺陷（Library 项目没有该任务，所以主工程不受影响）。
+         这里关掉自动生成，改由下面的目标拷贝仓库里的静态模板 —— net8.0 控制台应用的
+         runtimeconfig.json 内容是固定的，与本机会生成的一致。 -->
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="TruckTurn.Verify.runtimeconfig.json" />
+  </ItemGroup>
+
+  <Target Name="CopyStaticRuntimeConfig" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\TruckTurn.Verify.runtimeconfig.json"
+          DestinationFiles="$(OutDir)TruckTurn.Verify.runtimeconfig.json"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <ItemGroup>
+    <!-- 本地文件：CAD API 轻量替身 + 校验主程序 -->
+    <Compile Include="GssoftShim.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="CarrierVerify.cs" />
+    <Compile Include="_dump_turn90.cs" />
+    <Compile Include="_dump_scurve.cs" />
+    <Compile Include="_dump_rev_rigid.cs" />
+    <Compile Include="_dump_radii.cs" />
+    <Compile Include="_dump_rigidbody.cs" />
+    <Compile Include="_dump_straightenv.cs" />
+    <Compile Include="_dump_straightsliver.cs" />
+    <Compile Include="_dump_revfull.cs" />
+    <Compile Include="_dump_revsteep.cs" />
+    <Compile Include="DumpEnvelope.cs" />
+
+    <!-- 直接链接插件主工程的真实源码，原封不动参与编译，保证验证的就是实际发布的代码 -->
+    <Compile Include="..\TruckTurn\TruckKinematics.cs" />
+    <Compile Include="..\TruckTurn\GeometryUtil.cs" />
+    <Compile Include="..\TruckTurn\VehicleParams.cs" />
+    <Compile Include="..\TruckTurn\CarrierParams.cs" />
+    <Compile Include="..\TruckTurn\CarrierPose.cs" />
+    <Compile Include="..\TruckTurn\CarrierKinematics.cs" />
+    <Compile Include="..\TruckTurn\CarrierPathPlanner.cs" />
+    <Compile Include="..\TruckTurn\CarrierCadGeometry.cs" />
+  </ItemGroup>
+
+</Project>

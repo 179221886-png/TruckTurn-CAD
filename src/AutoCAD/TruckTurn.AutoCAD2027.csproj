@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>TruckTurn.AutoCAD2027</AssemblyName>
+    <AssemblyTitle>TruckTurn for AutoCAD 2027</AssemblyTitle>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AutoCAD.NET" Version="26.0.0" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
