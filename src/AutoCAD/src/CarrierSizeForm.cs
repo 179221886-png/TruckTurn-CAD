@@ -52,12 +52,16 @@ namespace TruckTurn
         readonly DoubleBufferedPanel pnlPreview = new DoubleBufferedPanel();
 
         readonly double drawingUnitScale;
+        readonly CarrierParams baseline;
+        bool wheelbaseEdited, trackEdited, maxSteerEdited;
+        int customUnitIndex = -1;
         bool loading;
         public CarrierParams Result { get; private set; }
 
         public CarrierSizeForm(CarrierParams current, double detectedDrawingUnitScale)
         {
             drawingUnitScale = detectedDrawingUnitScale;
+            baseline = (current ?? CarrierParams.GenericFourWheelIndependent()).Clone();
             Text = "集装箱跨运车选型与轨迹参数";
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -77,7 +81,7 @@ namespace TruckTurn
                 Height = 48,
                 Padding = new Padding(10, 6, 10, 4),
                 ForeColor = Color.DarkRed,
-                Text = "轨迹仅按下方数字参数计算；方案名称只用于识别。当前内置参数是通用运动学模板，不代表厂家认证；原地回转默认关闭。"
+                Text = "整机长宽包含允许转角范围内的轮胎，不含集装箱与安全裕量。内置参数仅为通用模板；侧视高度和圆胎为示意，CAD平面轮胎按输入长宽绘制。"
             };
 
             var buttons = new FlowLayoutPanel
@@ -114,7 +118,7 @@ namespace TruckTurn
 
             FillChoices();
             WirePreviewEvents();
-            LoadCurrent(current ?? CarrierParams.GenericFourWheelIndependent());
+            LoadCurrent(baseline);
         }
 
         Control BuildPreviewPane()
@@ -143,13 +147,13 @@ namespace TruckTurn
             AddRow(table, "方案名称", txtPreset);
             AddRow(table, "数据状态", cboDataStatus);
             AddRow(table, "运动学架构", cboArchitecture);
-            AddRow(table, "整机长度 m", txtLength);
-            AddRow(table, "整机宽度 m", txtWidth);
+            AddRow(table, "整机外廓长度 m（含轮胎）", txtLength);
+            AddRow(table, "整机外廓宽度 m（含轮胎）", txtWidth);
             AddRow(table, "轴距 m", txtWheelbase);
             AddRow(table, "轮距 m", txtTrack);
             AddRow(table, "轮胎长度 m", txtWheelLength);
             AddRow(table, "轮胎宽度 m", txtWheelWidth);
-            AddRow(table, "各轮最大转角 °", txtMaxSteer);
+            AddRow(table, "统一最大转角 °（修改生效）", txtMaxSteer);
             AddRow(table, "最大转向速度 °/s", txtSteerRate);
             AddRow(table, "最小转弯半径 m", txtMinRadius);
             AddRow(table, "半径测量基准", cboRadiusReference);
@@ -221,6 +225,8 @@ namespace TruckTurn
         {
             cboArchitecture.Items.AddRange(new object[] { "四轮联动转向", "四轮独立转向" });
             cboDataStatus.Items.AddRange(new object[] { "通用参数（未认证）", "用户自定义（未认证）" });
+            if (baseline.DataStatus == CarrierDataStatus.ManufacturerVerified)
+                cboDataStatus.Items.Add("厂家核验（沿用原记录）");
             cboRadiusReference.Items.AddRange(new object[]
             {
                 "车体参考点", "内侧轮迹", "外侧轮迹", "整机外廓"
@@ -252,7 +258,7 @@ namespace TruckTurn
             TextBox[] boxes =
             {
                 txtLength, txtWidth, txtWheelbase, txtTrack,
-                txtWheelLength, txtWheelWidth, txtSafety,
+                txtWheelLength, txtWheelWidth, txtMaxSteer, txtSteerRate, txtMinRadius, txtSafety,
                 txtContainerLength, txtContainerWidth, txtContainerHeight,
                 txtContainerOffsetX, txtContainerOffsetY, txtContainerSlew
             };
@@ -261,6 +267,12 @@ namespace TruckTurn
                 {
                     if (!loading) RedrawPreview();
                 };
+            txtWheelbase.TextChanged += delegate { if (!loading) wheelbaseEdited = true; };
+            txtTrack.TextChanged += delegate { if (!loading) trackEdited = true; };
+            txtMaxSteer.TextChanged += delegate { if (!loading) maxSteerEdited = true; };
+            CheckBox[] checks = { chkFront, chkRear, chkCounter, chkCrab, chkLateral, chkPivot };
+            for (int i = 0; i < checks.Length; i++)
+                checks[i].CheckedChanged += delegate { if (!loading) RedrawPreview(); };
         }
 
         void LoadCurrent(CarrierParams p)
@@ -269,7 +281,8 @@ namespace TruckTurn
             txtPreset.Text = p.PresetName;
             txtManufacturer.Text = p.Manufacturer;
             txtModel.Text = p.Model;
-            cboDataStatus.SelectedIndex = p.DataStatus == CarrierDataStatus.UserDefined ? 1 : 0;
+            cboDataStatus.SelectedIndex = p.DataStatus == CarrierDataStatus.ManufacturerVerified
+                ? 2 : (p.DataStatus == CarrierDataStatus.UserDefined ? 1 : 0);
             cboArchitecture.SelectedIndex = p.Architecture == CarrierArchitecture.FourWheelLinked ? 0 : 1;
             txtLength.Text = Number(p.OverallLength);
             txtWidth.Text = Number(p.OverallWidth);
@@ -297,10 +310,15 @@ namespace TruckTurn
             txtContainerOffsetY.Text = Number(p.ContainerOffsetY);
             txtContainerSlew.Text = Number(p.ContainerSlewAngleDeg);
             txtSafety.Text = Number(p.SafetyMargin);
-            if (drawingUnitScale > 0.0 && Math.Abs(p.UnitScale - drawingUnitScale) < 1e-6)
+            if (drawingUnitScale > 0.0 && p.UnitScale == drawingUnitScale)
                 cboUnits.SelectedIndex = 2;
+            else if (p.UnitScale == 1.0 || p.UnitScale == 1000.0)
+                cboUnits.SelectedIndex = p.UnitScale == 1000.0 ? 1 : 0;
             else
-                cboUnits.SelectedIndex = p.UnitScale >= 999.5 ? 1 : 0;
+            {
+                customUnitIndex = cboUnits.Items.Add("沿用当前（1m = " + Number(p.UnitScale) + "图形单位）");
+                cboUnits.SelectedIndex = customUnitIndex;
+            }
 
             chkPath.Checked = p.ShowReferencePath;
             chkEquipmentEnvelope.Checked = p.ShowEquipmentEnvelope;
@@ -325,6 +343,7 @@ namespace TruckTurn
             chkCrab.Checked = p.Supports(CarrierSteeringMode.Crab);
             chkLateral.Checked = p.Supports(CarrierSteeringMode.Lateral);
             chkPivot.Checked = false;
+            maxSteerEdited = true;
             txtMaxSteer.Text = Number(p.FrontLeft.MaxSteerAngleDeg);
             RedrawPreview();
         }
@@ -339,15 +358,47 @@ namespace TruckTurn
 
         void BuildResult()
         {
+            CarrierParams p;
+            string error;
+            if (TryBuildParams(out p, out error))
+            {
+                Result = p;
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+            else
+                MessageBox.Show(this, error, "参数有误", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        /// <summary>预览、确认及无弹窗回归测试共用同一读参路径。</summary>
+        public bool TryBuildParams(out CarrierParams parameters, out string error)
+        {
+            parameters = null;
             try
             {
-                var p = new CarrierParams();
-                p.PresetName = string.IsNullOrWhiteSpace(txtPreset.Text)
-                    ? "用户跨运车参数" : txtPreset.Text.Trim();
-                p.Manufacturer = txtManufacturer.Text.Trim();
-                p.Model = txtModel.Text.Trim();
-                p.DataStatus = cboDataStatus.SelectedIndex == 1
-                    ? CarrierDataStatus.UserDefined : CarrierDataStatus.Generic;
+                CarrierParams p = ReadParams();
+                if (!p.TryValidate(out error)) return false;
+                parameters = p;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+        }
+
+        CarrierParams ReadParams()
+        {
+                var p = baseline.Clone();
+                if (txtPreset.Text != (baseline.PresetName ?? ""))
+                    p.PresetName = string.IsNullOrWhiteSpace(txtPreset.Text)
+                        ? "用户跨运车参数" : txtPreset.Text.Trim();
+                // 隐藏的厂家/型号以及高级参数原样沿用；打开并确认不等于重建车型。
+                p.DataStatus = cboDataStatus.SelectedIndex == 2 &&
+                    baseline.DataStatus == CarrierDataStatus.ManufacturerVerified
+                    ? CarrierDataStatus.ManufacturerVerified
+                    : (cboDataStatus.SelectedIndex == 1 ? CarrierDataStatus.UserDefined : CarrierDataStatus.Generic);
                 p.Architecture = cboArchitecture.SelectedIndex == 0
                     ? CarrierArchitecture.FourWheelLinked : CarrierArchitecture.FourWheelIndependent;
                 p.OverallLength = Read(txtLength, "整机长度");
@@ -357,10 +408,24 @@ namespace TruckTurn
                 p.WheelLength = Read(txtWheelLength, "轮胎长度");
                 p.WheelWidth = Read(txtWheelWidth, "轮胎宽度");
                 double maxSteer = Read(txtMaxSteer, "最大转角");
-                p.FrontLeft.MaxSteerAngleDeg = maxSteer;
-                p.FrontRight.MaxSteerAngleDeg = maxSteer;
-                p.RearLeft.MaxSteerAngleDeg = maxSteer;
-                p.RearRight.MaxSteerAngleDeg = maxSteer;
+                // 只有明确修改轴距/轮距时才重设对应坐标；未编辑保留每个轮位覆盖值。
+                if (wheelbaseEdited && p.Wheelbase != baseline.Wheelbase)
+                {
+                    p.FrontLeft.X = p.FrontRight.X = p.Wheelbase * 0.5;
+                    p.RearLeft.X = p.RearRight.X = -p.Wheelbase * 0.5;
+                }
+                if (trackEdited && p.TrackWidth != baseline.TrackWidth)
+                {
+                    p.FrontLeft.Y = p.RearLeft.Y = p.TrackWidth * 0.5;
+                    p.FrontRight.Y = p.RearRight.Y = -p.TrackWidth * 0.5;
+                }
+                if (maxSteerEdited)
+                {
+                    p.FrontLeft.MaxSteerAngleDeg = maxSteer;
+                    p.FrontRight.MaxSteerAngleDeg = maxSteer;
+                    p.RearLeft.MaxSteerAngleDeg = maxSteer;
+                    p.RearRight.MaxSteerAngleDeg = maxSteer;
+                }
                 p.MaxSteerRateDegPerSecond = Read(txtSteerRate, "最大转向速度");
                 p.MinimumReferenceRadius = Read(txtMinRadius, "最小转弯半径");
                 p.TurningRadiusReference = (CarrierTurningRadiusReference)Math.Max(0, cboRadiusReference.SelectedIndex);
@@ -372,23 +437,31 @@ namespace TruckTurn
                 if (chkCrab.Checked) p.SteeringCapabilities |= CarrierSteeringCapabilities.Crab;
                 if (chkLateral.Checked) p.SteeringCapabilities |= CarrierSteeringCapabilities.Lateral;
                 if (chkPivot.Checked) p.SteeringCapabilities |= CarrierSteeringCapabilities.Pivot;
-                if (chkLateral.Checked && maxSteer < 89.5)
-                    throw new InvalidOperationException("启用纯横移时，各轮最大转角必须至少为 89.5°。");
+                if (chkLateral.Checked)
+                {
+                    foreach (CarrierWheelLocation wheel in p.ResolvedWheelLocations())
+                        if (wheel.MaxSteerAngleDeg < 89.5)
+                            throw new InvalidOperationException("启用纯横移时，各轮最大转角必须至少为 89.5°。");
+                }
                 if (chkPivot.Checked && p.Architecture != CarrierArchitecture.FourWheelIndependent)
                     throw new InvalidOperationException("原地回转只允许四轮独立转向架构。");
 
                 p.ContainerPreset = (CarrierContainerPreset)Math.Max(0, cboContainer.SelectedIndex);
-                p.CustomContainerLength = Read(txtContainerLength, "自定义箱长");
-                p.CustomContainerWidth = Read(txtContainerWidth, "自定义箱宽");
-                p.CustomContainerHeight = Read(txtContainerHeight, "自定义箱高");
+                if (p.ContainerPreset == CarrierContainerPreset.Custom)
+                {
+                    p.CustomContainerLength = Read(txtContainerLength, "自定义箱长");
+                    p.CustomContainerWidth = Read(txtContainerWidth, "自定义箱宽");
+                    p.CustomContainerHeight = Read(txtContainerHeight, "自定义箱高");
+                }
                 p.ContainerOffsetX = Read(txtContainerOffsetX, "箱体纵向偏置", false);
                 p.ContainerOffsetY = Read(txtContainerOffsetY, "箱体横向偏置", false);
                 p.ContainerSlewAngleDeg = Read(txtContainerSlew, "箱体相对转角", false);
                 p.SafetyMargin = Read(txtSafety, "安全裕量", false);
                 if (p.SafetyMargin < 0.0) throw new InvalidOperationException("安全裕量不能为负数。");
-                p.UnitScale = cboUnits.SelectedIndex == 1
+                p.UnitScale = cboUnits.SelectedIndex == customUnitIndex && customUnitIndex >= 0
+                    ? baseline.UnitScale : (cboUnits.SelectedIndex == 1
                     ? 1000.0
-                    : (cboUnits.SelectedIndex == 2 && drawingUnitScale > 0.0 ? drawingUnitScale : 1.0);
+                    : (cboUnits.SelectedIndex == 2 && drawingUnitScale > 0.0 ? drawingUnitScale : 1.0));
 
                 p.ShowReferencePath = chkPath.Checked;
                 p.ShowEquipmentEnvelope = chkEquipmentEnvelope.Checked;
@@ -398,18 +471,7 @@ namespace TruckTurn
                 p.ShowBody = chkBody.Checked;
                 p.ShowAllNodeVehicles = cboNodeVehicleDisplay.SelectedIndex == 1;
 
-                var errors = p.Validate();
-                if (errors.Count > 0)
-                    throw new InvalidOperationException(string.Join("\n", errors));
-                Result = p;
-                DialogResult = DialogResult.OK;
-                Close();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, ex.Message, "参数有误",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
+                return p;
         }
 
         // ================= 跨运车参数化侧立面预览 =================
@@ -426,24 +488,21 @@ namespace TruckTurn
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             g.Clear(Color.FromArgb(250, 251, 252));
 
-            double length, width, wheelbase, track, wheelLength, wheelWidth, safety;
-            if (!TryPreviewNumber(txtLength, out length) ||
-                !TryPreviewNumber(txtWidth, out width) ||
-                !TryPreviewNumber(txtWheelbase, out wheelbase) ||
-                !TryPreviewNumber(txtTrack, out track) ||
-                !TryPreviewNumber(txtWheelLength, out wheelLength) ||
-                !TryPreviewNumber(txtWheelWidth, out wheelWidth) ||
-                !TryPreviewNumber(txtSafety, out safety, true) ||
-                length <= 0.1 || width <= 0.1 || wheelbase <= 0.1)
+            CarrierParams p;
+            string error;
+            if (!TryBuildParams(out p, out error))
             {
-                DrawPreviewHint(g, "请输入有效的整机与轮位尺寸");
+                DrawPreviewHint(g, error);
                 return;
             }
+            double length = p.OverallLength, width = p.OverallWidth;
+            double wheelbase = p.Wheelbase, track = p.TrackWidth;
+            double wheelLength = p.WheelLength, wheelWidth = p.WheelWidth, safety = p.SafetyMargin;
 
-            CarrierContainerDimensions box = PreviewContainerDimensions();
-            double offsetX = PreviewNumber(txtContainerOffsetX, 0.0);
-            double offsetY = PreviewNumber(txtContainerOffsetY, 0.0);
-            double slew = PreviewNumber(txtContainerSlew, 0.0) * Math.PI / 180.0;
+            CarrierContainerDimensions box = p.ContainerDimensions();
+            double offsetX = p.ContainerOffsetX;
+            double offsetY = p.ContainerOffsetY;
+            double slew = p.ContainerSlewAngleDeg * Math.PI / 180.0;
             double boxSideLength = box.Length <= 0.0 ? 0.0 :
                 Math.Abs(box.Length * Math.Cos(slew)) + Math.Abs(box.Width * Math.Sin(slew));
 
@@ -473,7 +532,7 @@ namespace TruckTurn
             using (var titleBrush = new SolidBrush(Color.FromArgb(45, 55, 64)))
             using (var metaBrush = new SolidBrush(Color.FromArgb(105, 114, 122)))
             {
-                g.DrawString("集装箱跨运车  ·  侧立面", titleFont, titleBrush, 18, 16);
+                g.DrawString("集装箱跨运车  ·  侧立面示意", titleFont, titleBrush, 18, 16);
                 string boxName = cboContainer.SelectedItem == null
                     ? "无载荷" : cboContainer.SelectedItem.ToString();
                 g.DrawString(string.Format(
@@ -499,20 +558,33 @@ namespace TruckTurn
             if (boxSideLength > 0.0 && box.Height > 0.0)
             {
                 double boxBottom = 0.92;
-                float bx1 = X(offsetX - boxSideLength * 0.5);
-                float bx2 = X(offsetX + boxSideLength * 0.5);
                 float by1 = Y(boxBottom + box.Height);
                 float by2 = Y(boxBottom);
                 using (var fill = new SolidBrush(Color.FromArgb(244, 241, 232)))
                 using (var pen = new Pen(Color.FromArgb(129, 104, 69), 1.35f))
                 using (var seam = new Pen(Color.FromArgb(205, 193, 171), 0.85f))
                 {
-                    g.FillRectangle(fill, bx1, by1, bx2 - bx1, by2 - by1);
-                    g.DrawRectangle(pen, bx1, by1, bx2 - bx1, by2 - by1);
-                    for (int k = 1; k < 6; k++)
+                    bool twin = p.ContainerPreset == CarrierContainerPreset.Twin20;
+                    for (int part = 0; part < (twin ? 2 : 1); part++)
                     {
-                        float xx = bx1 + (bx2 - bx1) * k / 6f;
-                        g.DrawLine(seam, xx, by1 + 2, xx, by2 - 2);
+                        double partCenter = offsetX;
+                        double partLength = boxSideLength;
+                        if (twin)
+                        {
+                            partCenter += (part == 0 ? -0.5 : 0.5) *
+                                (6.058 + p.Twin20Gap) * Math.Cos(slew);
+                            partLength = 6.058 * Math.Abs(Math.Cos(slew)) +
+                                box.Width * Math.Abs(Math.Sin(slew));
+                        }
+                        float bx1 = X(partCenter - partLength * 0.5);
+                        float bx2 = X(partCenter + partLength * 0.5);
+                        g.FillRectangle(fill, bx1, by1, bx2 - bx1, by2 - by1);
+                        g.DrawRectangle(pen, bx1, by1, bx2 - bx1, by2 - by1);
+                        for (int k = 1; k < 6; k++)
+                        {
+                            float xx = bx1 + (bx2 - bx1) * k / 6f;
+                            g.DrawLine(seam, xx, by1 + 2, xx, by2 - 2);
+                        }
                     }
                 }
             }
@@ -580,9 +652,18 @@ namespace TruckTurn
                 }
             }
 
-            double wheelRadiusM = Math.Max(0.38, Math.Min(0.72, wheelLength * 0.42));
-            DrawCarrierPreviewWheel(g, frontAxle, groundY, wheelRadiusM, scale);
-            DrawCarrierPreviewWheel(g, rearAxle, groundY, wheelRadiusM, scale);
+            // 圆胎与门架高度仅为侧面示意；平面精确胎长/胎宽仍由 CAD 矩形轮胎表达。
+            double wheelRadiusM = wheelLength * 0.5;
+            CarrierWheelLocation[] resolvedWheels = p.ResolvedWheelLocations();
+            for (int i = 0; i < resolvedWheels.Length; i++)
+            {
+                bool alreadyDrawn = false;
+                for (int j = 0; j < i; j++)
+                    if (Math.Abs(resolvedWheels[i].X - resolvedWheels[j].X) < 1e-9)
+                        alreadyDrawn = true;
+                if (!alreadyDrawn)
+                    DrawCarrierPreviewWheel(g, X(resolvedWheels[i].X), groundY, wheelRadiusM, scale);
+            }
 
             using (var ground = new Pen(Color.FromArgb(164, 171, 177), 1f))
                 g.DrawLine(ground, X(minX - 0.35), groundY, X(maxX + 0.35), groundY);
@@ -598,9 +679,11 @@ namespace TruckTurn
             using (var footFont = new Font(Font.FontFamily, 7.8f, FontStyle.Regular))
             using (var footBrush = new SolidBrush(Color.FromArgb(116, 124, 131)))
             {
-                string foot = string.Format(
-                    "轮胎 {0:0.00}×{1:0.00} m   ·   箱体横偏 {2:+0.00;-0.00;0.00} m",
-                    wheelLength, wheelWidth, offsetY);
+                string foot = string.Format(CultureInfo.CurrentCulture,
+                    "平面胎长×宽 {0:0.00}×{1:0.00} m  ·  高度/圆胎示意",
+                    wheelLength, wheelWidth);
+                if (p.ContainerPreset == CarrierContainerPreset.Twin20)
+                    foot += "  ·  箱间距 " + p.Twin20Gap.ToString("0.###") + " m";
                 g.DrawString(foot, footFont, footBrush, 18, pnlPreview.Height - 25);
             }
         }
@@ -656,49 +739,6 @@ namespace TruckTurn
                     new RectangleF(0, 0, pnlPreview.Width, pnlPreview.Height), format);
         }
 
-        CarrierContainerDimensions PreviewContainerDimensions()
-        {
-            switch ((CarrierContainerPreset)Math.Max(0, cboContainer.SelectedIndex))
-            {
-                case CarrierContainerPreset.None:
-                    return new CarrierContainerDimensions(0.0, 0.0, 0.0);
-                case CarrierContainerPreset.Iso20Gp:
-                    return new CarrierContainerDimensions(6.058, 2.438, 2.591);
-                case CarrierContainerPreset.Iso40Gp:
-                    return new CarrierContainerDimensions(12.192, 2.438, 2.591);
-                case CarrierContainerPreset.Iso40Hc:
-                    return new CarrierContainerDimensions(12.192, 2.438, 2.896);
-                case CarrierContainerPreset.Iso45Hc:
-                    return new CarrierContainerDimensions(13.716, 2.438, 2.896);
-                case CarrierContainerPreset.Twin20:
-                    return new CarrierContainerDimensions(12.192, 2.438, 2.591);
-                default:
-                    return new CarrierContainerDimensions(
-                        PreviewNumber(txtContainerLength, 0.0),
-                        PreviewNumber(txtContainerWidth, 0.0),
-                        PreviewNumber(txtContainerHeight, 0.0));
-            }
-        }
-
-        static bool TryPreviewNumber(TextBox box, out double value, bool allowZero = false)
-        {
-            bool ok = double.TryParse(box.Text, NumberStyles.Float,
-                          CultureInfo.CurrentCulture, out value) ||
-                      double.TryParse(box.Text, NumberStyles.Float,
-                          CultureInfo.InvariantCulture, out value);
-            return ok && CarrierMath.Finite(value) && (allowZero ? value >= 0.0 : value > 0.0);
-        }
-
-        static double PreviewNumber(TextBox box, double fallback)
-        {
-            double value;
-            return (double.TryParse(box.Text, NumberStyles.Float,
-                        CultureInfo.CurrentCulture, out value) ||
-                    double.TryParse(box.Text, NumberStyles.Float,
-                        CultureInfo.InvariantCulture, out value)) && CarrierMath.Finite(value)
-                ? value : fallback;
-        }
-
         static TableLayoutPanel FormTable()
         {
             var table = new TableLayoutPanel
@@ -736,7 +776,7 @@ namespace TruckTurn
 
         static TextBox Box() { return new TextBox { Width = 300 }; }
         static CheckBox Check(string text) { return new CheckBox { Text = text, AutoSize = true }; }
-        static string Number(double value) { return value.ToString("0.###", CultureInfo.InvariantCulture); }
+        static string Number(double value) { return value.ToString("R", CultureInfo.InvariantCulture); }
 
         static double Read(TextBox box, string name, bool positive = true)
         {

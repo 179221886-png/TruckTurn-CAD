@@ -87,6 +87,27 @@ namespace TruckTurn
             return lim < 1e-3 ? 1e-3 : lim;
         }
 
+        // VehicleParams 的长度是图形单位；采样策略的常量和 toothBudget 始终是米。
+        // 在唯一入口转换，避免毫米图把 0.5m 当成 0.5mm，或把 2cm 齿深当成 0.02mm。
+        private static double SamplingUnitScale(VehicleParams p)
+        {
+            double scale = p.UnitScale;
+            return scale > 0.0 && !double.IsNaN(scale) && !double.IsInfinity(scale)
+                ? scale : 1.0;
+        }
+
+        private static double SamplingDistance(VehicleParams p, double meters)
+        {
+            return meters * SamplingUnitScale(p);
+        }
+
+        private static double DrawingStepLimit(VehicleParams p, double thetaRad,
+                                               double baseDs, double budgetMeters)
+        {
+            double scale = SamplingUnitScale(p);
+            return scale * StraightStepLimit(thetaRad, baseDs / scale, budgetMeters);
+        }
+
         /// <summary>兼容旧签名：仅转弯，无直行段</summary>
         public static List<Frame> Simulate(VehicleParams p, Point2d start, Vector2d heading, int steerSign, double turnAngleDeg)
         {
@@ -163,7 +184,7 @@ namespace TruckTurn
             // ---------------- 直线段（前轮回正 φ1_dot = 0） ----------------
             if (straightLen > 1e-9)
             {
-                int nS = Math.Max(1, (int)Math.Ceiling(straightLen / Math.Max(ds, 1e-6)));
+                int nS = Math.Max(1, (int)Math.Ceiling(straightLen / Math.Max(ds, SamplingDistance(p, 1e-6))));
                 double step = straightLen / nS;
                 for (int i = 0; i < nS; i++)
                 {
@@ -227,7 +248,7 @@ namespace TruckTurn
             // ---------------- 直线段（刚体平移，朝向不变） ----------------
             if (straightLen > 1e-9)
             {
-                int nS = Math.Max(1, (int)Math.Ceiling(straightLen / Math.Max(ds, 1e-6)));
+                int nS = Math.Max(1, (int)Math.Ceiling(straightLen / Math.Max(ds, SamplingDistance(p, 1e-6))));
                 double step = straightLen / nS;
                 for (int i = 0; i < nS; i++)
                 {
@@ -331,7 +352,7 @@ namespace TruckTurn
             // v4.5.2 修复：同上 SimulateFromFrontAxle：自适应 R→+∞ 时 ds=R·dTheta 也→+∞，
             // phi2 单步 Euler 严重过冲（delta=-2.4°、straightLen=60m、nS=1 时单步 +13°）。
             // 把 ds 钳到 ≤0.5m，既保证 Euler 稳定（step≪2·L2=22m）又保证精度（误差 ≤0.7°）。
-            double ds = Math.Min(R * dTheta, 0.5);
+            double ds = Math.Min(R * dTheta, SamplingDistance(p, 0.5));
 
             double phi2 = startPhi2;
             Point2d O1 = startO1; Vector2d u1 = u10;
@@ -362,7 +383,7 @@ namespace TruckTurn
             // 直行段（前轮回正，φ1dot=0；后退沿 -u1 平移）
             if (straightLen > 1e-9)
             {
-                int nS = Math.Max(1, (int)Math.Ceiling(straightLen / Math.Max(ds, 1e-6)));
+                int nS = Math.Max(1, (int)Math.Ceiling(straightLen / Math.Max(ds, SamplingDistance(p, 1e-6))));
                 double step = straightLen / nS;
                 for (int i = 0; i < nS; i++)
                 {
@@ -489,7 +510,7 @@ namespace TruckTurn
             }
             if (straightLen > 1e-9)
             {
-                int nS = Math.Max(1, (int)Math.Ceiling(straightLen / Math.Max(ds, 1e-6)));
+                int nS = Math.Max(1, (int)Math.Ceiling(straightLen / Math.Max(ds, SamplingDistance(p, 1e-6))));
                 double step = straightLen / nS;
                 for (int i = 0; i < nS; i++)
                 {
@@ -743,8 +764,8 @@ namespace TruckTurn
             // 挂车（前端从 kingpin 向前 tf，后端从 kingpin 向后 |bx|）
             pts[4] = f.K + tf * f.U2 + (wb / 2) * n2;              // 前左
             pts[5] = f.K + tf * f.U2 - (wb / 2) * n2;              // 前右
-            pts[6] = f.K + (tf + bx) * f.U2 + (wb / 2) * n2;       // 后左(车尾)
-            pts[7] = f.K + (tf + bx) * f.U2 - (wb / 2) * n2;       // 后右
+            pts[6] = f.K + bx * f.U2 + (wb / 2) * n2;              // 后左(车尾)
+            pts[7] = f.K + bx * f.U2 - (wb / 2) * n2;              // 后右
             return pts;
         }
 
@@ -822,16 +843,12 @@ namespace TruckTurn
             double wH = p.TractorWidth / 2.0;
 
             // 车头长：25% 车长，钳 1.2~2.6m，且不超过车身的 45%
-            double cabLen = 0.25 * total;
-            double cabMin = 1.2 * us, cabMax = 2.6 * us;
-            if (cabLen < cabMin) cabLen = cabMin;
-            if (cabLen > cabMax) cabLen = cabMax;
-            if (cabLen > 0.45 * total) cabLen = 0.45 * total;
+            double cabLen = p.RigidCabLengthMeters() * us;
             double xCab = xF - cabLen;                    // 驾驶室后壁
             double slope = 0.35 * cabLen;                 // 挡风玻璃斜面段长
             double wNose = wH * 0.86;                     // 鼻端半宽
             double gap = 0.12 * us;                       // 驾驶室与车厢缝隙
-            double mirror = 0.22 * us;                    // 后视镜外伸
+            double mirror = p.BodyWidthIncludesMirrors ? 0.0 : 0.22 * us;
 
             Vector2d n1 = new Vector2d(-f.U1.Y, f.U1.X);
             Point2d P(double x, double y) => f.O1 + x * f.U1 + y * n1;
@@ -846,8 +863,11 @@ namespace TruckTurn
             // ② 挡风玻璃线（斜面根部横向）
             res.Add(new[] { P(xF - slope, +wH), P(xF - slope, -wH) });
             // ③ 后视镜
-            res.Add(new[] { P(xF - slope, +wH), P(xF - slope, +wH + mirror) });
-            res.Add(new[] { P(xF - slope, -wH), P(xF - slope, -wH - mirror) });
+            if (mirror > 0)
+            {
+                res.Add(new[] { P(xF - slope, +wH), P(xF - slope, +wH + mirror) });
+                res.Add(new[] { P(xF - slope, -wH), P(xF - slope, -wH - mirror) });
+            }
             // ④ 车厢（闭合，驾驶室后壁留缝）
             double xBox = xCab - gap;
             if (xBox > xR + 1e-6)
@@ -1232,7 +1252,7 @@ namespace TruckTurn
             if (a > 1e-9) return false;
 
             double R2min = ReverseMinControlRadius(p);
-            if (R2min < 0.3) R2min = 0.3;                // 挂车可 pivot 时防退化
+            R2min = Math.Max(R2min, SamplingDistance(p, 0.3)); // 挂车可 pivot 时防退化
 
             int s = d > 0 ? 1 : -1;
             Point2d C = P0 + (s * R2min) * n;
@@ -1295,7 +1315,7 @@ namespace TruckTurn
             double phi2 = Math.Atan2(startFrame.U2.Y, startFrame.U2.X);
             double phi1 = Math.Atan2(startFrame.U1.Y, startFrame.U1.X);
             double theta = NormalizeAngle(phi2 - phi1);         // 当前铰接角
-            double lambda = Math.Max(L2, 3.0);                  // 司机修正收敛长度
+            double lambda = Math.Max(L2, SamplingDistance(p, 3.0)); // 司机修正收敛长度
 
             bool hasArc = turnAngleDeg > 1e-9 && !double.IsInfinity(radius) && !double.IsNaN(radius) && radius > 1e-9;
             double arcLenDone = 0.0;
@@ -1306,14 +1326,17 @@ namespace TruckTurn
                 Vector2d u20 = new Vector2d(Math.Cos(phi2), Math.Sin(phi2));
                 Vector2d n20 = new Vector2d(-u20.Y, u20.X);
                 Point2d C = O2 + (s * R2) * n20;
-                double R1 = Math.Sqrt(Math.Max(1e-6, R2 * R2 + L2 * L2 - ak * ak));
+                double minRadius = SamplingDistance(p, 1e-3);
+                double R1 = Math.Sqrt(Math.Max(minRadius * minRadius,
+                    R2 * R2 + L2 * L2 - ak * ak));
                 // 稳态铰接角（同心圆几何解析解，推导见函数头注释）
                 double thetaEq = -Math.Atan2(s * (R1 * L2 - ak * R2), R1 * R2 + ak * L2);
                 if (thetaEq > maxArt) thetaEq = maxArt;
                 else if (thetaEq < -maxArt) thetaEq = -maxArt;
 
                 double totalTurn = turnAngleDeg * Math.PI / 180.0;
-                double dStep = Math.Min((degPerStep > 0 ? degPerStep : 1.0) * Math.PI / 180.0, 0.5 / R2);
+                double dStep = Math.Min((degPerStep > 0 ? degPerStep : 1.0) * Math.PI / 180.0,
+                    SamplingDistance(p, 0.5) / R2);
                 int n = Math.Max(1, (int)Math.Ceiling(totalTurn / dStep));
                 double dTh = totalTurn / n;
                 Vector2d rel0 = O2 - C;
@@ -1359,7 +1382,8 @@ namespace TruckTurn
                 double done = 0.0;
                 while (done < straightLen - 1e-12)
                 {
-                    double step = Math.Min(StraightStepLimit(theta, 0.5, toothBudget), straightLen - done);
+                    double step = Math.Min(DrawingStepLimit(p, theta,
+                        SamplingDistance(p, 0.5), toothBudget), straightLen - done);
                     arcLenDone += step;
                     O2 = O2 - step * u2;
                     double thetaI = theta * Math.Exp(-step / lambda);
@@ -1395,7 +1419,8 @@ namespace TruckTurn
                 Vector2d n10 = new Vector2d(-u10.Y, u10.X);
                 Point2d C = O1 + (s * radius) * n10;
                 double totalTurn = turnAngleDeg * Math.PI / 180.0;
-                double dStep = Math.Min((degPerStep > 0 ? degPerStep : 1.0) * Math.PI / 180.0, 0.5 / radius);
+                double dStep = Math.Min((degPerStep > 0 ? degPerStep : 1.0) * Math.PI / 180.0,
+                    SamplingDistance(p, 0.5) / radius);
                 int n = Math.Max(1, (int)Math.Ceiling(totalTurn / dStep));
                 double dTh = totalTurn / n;
                 Vector2d rel0 = O1 - C;
@@ -1420,7 +1445,7 @@ namespace TruckTurn
 
             if (straightLen > 1e-9)
             {
-                int nS = Math.Max(1, (int)Math.Ceiling(straightLen / 0.5));
+                int nS = Math.Max(1, (int)Math.Ceiling(straightLen / SamplingDistance(p, 0.5)));
                 double step = straightLen / nS;
                 Vector2d u1 = new Vector2d(Math.Cos(phi1), Math.Sin(phi1));
                 for (int i = 1; i <= nS; i++)
@@ -1468,7 +1493,7 @@ namespace TruckTurn
             // 实测：delta=-2.4°、R=+∞、straightLen=60m 时 nS=1、单步 deltaUpdate=+13°，
             //   与用户报告「直线行驶时车尾乱飘」一致。
             // 修法：把 ds 钳到 ≤0.5m（远小于 2·L2=22m 稳定界，且 Euler 误差 ≤0.7°）。
-            double ds = Math.Min(R * dTheta, 0.5);
+            double ds = Math.Min(R * dTheta, SamplingDistance(p, 0.5));
 
             double phi2 = phi0;
             Point2d F = startFront;
@@ -1482,7 +1507,7 @@ namespace TruckTurn
             // ≤ 0.02/|sinθ| 后齿深 ≤2cm，被 RDP 平滑且出图不可见；
             // θ→0 退回 ds（≤0.5m）不增帧。Euler 稳定界不变（step ≤ ds ≤ 0.5m ≪ 2·L2）。
             // R ≥ 1e9（自适应反解 R→+∞）时圆弧退化为直线，跳过转弯帧由直行段覆盖。
-            if (totalTurn > 1e-12 && R < 1e9)
+            if (totalTurn > 1e-12 && R < SamplingDistance(p, 1e9))
             {
                 double done = 0.0; // 已转过的前轮弧角（弧度，无符号）
                 while (done < totalTurn - 1e-12)
@@ -1491,7 +1516,7 @@ namespace TruckTurn
                     Point2d O1 = F - L * u1;
                     AddFrame(frames, O1, u1, phi2, ak, L2, maxArt);
                     double th = NormalizeAngle(phi2 - Math.Atan2(u1.Y, u1.X));
-                    double step = Math.Min(StraightStepLimit(th, ds, toothBudget), R * (totalTurn - done));
+                    double step = Math.Min(DrawingStepLimit(p, th, ds, toothBudget), R * (totalTurn - done));
                     phi2 += TrailerYawRate(u1, phi2, ak, phi1dot, L2) * step;
                     done += step / R;
                 }
@@ -1509,7 +1534,7 @@ namespace TruckTurn
                 while (done < straightLen - 1e-12)
                 {
                     double th = NormalizeAngle(phi2 - Math.Atan2(u1.Y, u1.X));
-                    double step = Math.Min(StraightStepLimit(th, ds, toothBudget), straightLen - done);
+                    double step = Math.Min(DrawingStepLimit(p, th, ds, toothBudget), straightLen - done);
                     phi2 += TrailerYawRate(u1, phi2, ak, 0.0, L2) * step;
                     F = F + step * u1;
                     Point2d O1 = F - L * u1;
@@ -1549,7 +1574,7 @@ namespace TruckTurn
             // v4.5.2 修复：同上 SimulateFromFrontAxle：自适应 R→+∞ 时 ds=R·dTheta 也→+∞，
             // phi2 单步 Euler 严重过冲（delta=-2.4°、straightLen=60m、nS=1 时单步 +13°）。
             // 把 ds 钳到 ≤0.5m，既保证 Euler 稳定（step≪2·L2=22m）又保证精度（误差 ≤0.7°）。
-            double ds = Math.Min(R * dTheta, 0.5);
+            double ds = Math.Min(R * dTheta, SamplingDistance(p, 0.5));
 
             double phi2 = startPhi2;
             Point2d F = startFront;
@@ -1559,7 +1584,7 @@ namespace TruckTurn
             // v4.9.13：转弯分支改弧长自适应步进（同 SimulateFromFrontAxle 的说明）——
             // 缓弯 + 残留铰接角时挂车扇形扫掠产生 ds·|sinθ| 级台阶齿，
             // 按 StraightStepLimit 钳弧长步后齿深 ≤2cm。
-            if (totalTurn > 1e-12 && R < 1e9)
+            if (totalTurn > 1e-12 && R < SamplingDistance(p, 1e9))
             {
                 double phi1dotSigned = dir * steerSign * tanDelta / L;
                 double done = 0.0;
@@ -1569,7 +1594,7 @@ namespace TruckTurn
                     Point2d O1 = F - L * u1;
                     AddFrame(frames, O1, u1, phi2, ak, L2, maxArt);
                     double th = NormalizeAngle(phi2 - Math.Atan2(u1.Y, u1.X));
-                    double step = Math.Min(StraightStepLimit(th, ds, toothBudget), R * (totalTurn - done));
+                    double step = Math.Min(DrawingStepLimit(p, th, ds, toothBudget), R * (totalTurn - done));
                     phi2 += TrailerYawRate(u1, phi2, ak, phi1dotSigned, L2) * (dir * step);
                     done += step / R;
                 }
@@ -1586,7 +1611,7 @@ namespace TruckTurn
                 while (done < straightLen - 1e-12)
                 {
                     double th = NormalizeAngle(phi2 - Math.Atan2(u1.Y, u1.X));
-                    double step = Math.Min(StraightStepLimit(th, ds, toothBudget), straightLen - done);
+                    double step = Math.Min(DrawingStepLimit(p, th, ds, toothBudget), straightLen - done);
                     double dsSigned = dir * step;
                     phi2 += TrailerYawRate(u1, phi2, ak, 0.0, L2) * dsSigned;
                     F = F + dir * step * u1;
@@ -1624,12 +1649,12 @@ namespace TruckTurn
             // 远看就是「直行时黄色包络消失」（刚性车高发/必发，铰接变体早有钳制不受影响）。
             // 同时转弯循环改弧长自适应步进（同铰接 v4.9.13），R≥1e9 时跳过转弯帧
             // （C=O0+steer·∞·n0=±∞，PoseOnArcFront 会算 NaN 毒化全部帧）。
-            double ds = Math.Min(R * dTheta, 0.5);
+            double ds = Math.Min(R * dTheta, SamplingDistance(p, 0.5));
             Point2d F = startFront;
             Vector2d u1 = u0;
 
             double totalTurn = Math.Max(0.0, turnAngleDeg) * Math.PI / 180.0;
-            if (totalTurn > 1e-12 && R < 1e9)
+            if (totalTurn > 1e-12 && R < SamplingDistance(p, 1e9))
             {
                 double done = 0.0;
                 while (done < totalTurn - 1e-12)
@@ -1680,12 +1705,12 @@ namespace TruckTurn
             // v4.9.18 修复：同 SimulateRigidFromFrontAxle —— ds 钳 ≤0.5m（R→∞ 时
             // 旧代码 nS=1 只出 2 帧，包络塌缩成细缝）；转弯循环改弧长自适应步进；
             // R≥1e9 跳过转弯帧避免 C=±∞ 产生 NaN。
-            double ds = Math.Min(R * dTheta, 0.5);
+            double ds = Math.Min(R * dTheta, SamplingDistance(p, 0.5));
             Point2d F = startFront;
             Vector2d u1 = u0;
 
             double totalTurn = Math.Max(0.0, turnAngleDeg) * Math.PI / 180.0;
-            if (totalTurn > 1e-12 && R < 1e9)
+            if (totalTurn > 1e-12 && R < SamplingDistance(p, 1e9))
             {
                 double done = 0.0;
                 while (done < totalTurn - 1e-12)
@@ -1753,25 +1778,33 @@ namespace TruckTurn
         public static List<Frame> SimulateTurn90AndStraighten(VehicleParams p, Point2d startFront, Vector2d heading,
                                                               int steerSign, double degPerStep, int dir = 1)
         {
+            // 独立放置命令仍从共线姿态起步；连续驾驶必须使用下方完整 Frame 入口。
+            Vector2d u1 = heading.GetNormal();
+            Point2d o1 = startFront - p.TractorWheelbase * u1;
+            Point2d k = p.Articulated
+                ? o1 + p.TractorRearToKingpin * u1 : startFront;
+            var initial = new Frame
+            {
+                O1 = o1, U1 = u1, K = k, U2 = u1,
+                O2 = p.Articulated ? k - p.TrailerKingpinToRearAxle * u1 : startFront
+            };
+            return SimulateTurn90AndStraightenFromState(p, initial, steerSign, degPerStep, dir);
+        }
+
+        /// <summary>
+        /// 连续驾驶的一键 90°：继承整车状态，不把尚未回正的挂车重置为共线。
+        /// 前进延用前轴控制，倒退延用既有挂车牵引/司机修正模型；均不改写输入帧。
+        /// </summary>
+        public static List<Frame> SimulateTurn90AndStraightenFromState(
+            VehicleParams p, Frame startFrame, int steerSign, double degPerStep, int dir = 1)
+        {
+            if (startFrame == null) throw new ArgumentNullException("startFrame");
+
             // v4.9.9：倒退 90° 改走「挂车牵引」模型 —— 旧分支直接反向积分前进运动学，
             // 铰接角指数发散撞限位（jackknife），画面上车头车厢锁死一个角度。
             // steerSign 语义变为「车尾甩向」（+1=车尾向左甩 / −1=向右甩）。
             if (dir < 0)
             {
-                Vector2d u1r = heading.GetNormal();
-                double Lr = p.TractorWheelbase;
-                Point2d O1r = startFront - Lr * u1r;
-                Frame f0;
-                if (p.Articulated)
-                {
-                    Point2d Kr = O1r + p.TractorRearToKingpin * u1r;
-                    Point2d O2r = Kr - p.TrailerKingpinToRearAxle * u1r;   // 与前进分支一致：起始共线
-                    f0 = new Frame { O1 = O1r, U1 = u1r, K = Kr, U2 = u1r, O2 = O2r };
-                }
-                else
-                {
-                    f0 = new Frame { O1 = O1r, U1 = u1r, K = O1r + Lr * u1r, U2 = u1r, O2 = O1r + Lr * u1r };
-                }
                 // 半径选取：稳态铰接角 ≤ 60% 机械限位（R2→∞ 时 tanθ_eq ≈ L2/R2），
                 // 同时不小于转向极限允许的最小车尾半径。半挂典型值：L2/tan(0.6·45°) ≈ 21m。
                 double R2 = ReverseMinControlRadius(p);
@@ -1781,11 +1814,17 @@ namespace TruckTurn
                     double R2gentle = p.TrailerKingpinToRearAxle / Math.Tan(thetaStar);
                     if (R2gentle > R2) R2 = R2gentle;
                 }
-                if (R2 < 0.3) R2 = 0.3;
-                return SimulateReverseFromState(p, f0, steerSign, 90.0, 0.0, R2, degPerStep);
+                R2 = Math.Max(R2, SamplingDistance(p, 0.3));
+                var reverseFrames = SimulateReverseFromState(
+                    p, startFrame, steerSign, 90.0, 0.0, R2, degPerStep);
+                PreserveInitialFrame(reverseFrames, startFrame);
+                return reverseFrames;
             }
 
-            var frames = SimulateFromFrontAxle(p, startFront, heading, steerSign, 90.0, 0.0, degPerStep);
+            var frames = SimulateFromStateFront(p, FrontAxle(startFrame, p), startFrame.U1,
+                Math.Atan2(startFrame.U2.Y, startFrame.U2.X),
+                steerSign, 90.0, 0.0, 1, degPerStep);
+            PreserveInitialFrame(frames, startFrame);
             if (!p.Articulated || frames == null || frames.Count == 0) return frames;
 
             var last = frames[frames.Count - 1];
@@ -1836,6 +1875,17 @@ namespace TruckTurn
                     frames.Add(straightFrames[i]);
             }
             return frames;
+        }
+
+        private static void PreserveInitialFrame(List<Frame> frames, Frame startFrame)
+        {
+            if (frames == null || frames.Count == 0) return;
+            // 消除圆心反算的尾数误差，并避免把调用方的可变 Frame 实例存进输出后修改。
+            frames[0] = new Frame
+            {
+                O1 = startFrame.O1, U1 = startFrame.U1, K = startFrame.K,
+                U2 = startFrame.U2, O2 = startFrame.O2
+            };
         }
 
         /// <summary>
@@ -2684,14 +2734,68 @@ namespace TruckTurn
         ///  tireLen/tireWidth 为 CAD 单位。</summary>
         public static List<Point2d[]> TireRects(Frame f, VehicleParams p, double tireLen, double tireWidth, int steerSign)
         {
+            double steer = steerSign == 0 ? 0.0 : steerSign * FrontSteerAngle(p);
+            return TireRectsWithSteer(f, p, tireLen, tireWidth, steer);
+        }
+
+        /// <summary>
+        /// 后轴组的示意位置（图形单位），以后轴/挂车末轴参考点为0，沿车头方向排列。
+        /// 各轴间距暂按1.35m示意；运动学仍为等效前后轴模型，不冒充各轴真实转向模型。
+        /// </summary>
+        public static double[] RearAxleOffsets(VehicleParams p, bool trailer)
+        {
+            int count = trailer ? Math.Max(1, Math.Min(3, p.TrailerAxles)) :
+                p.Articulated ? 1 : Math.Max(1, Math.Min(5, p.RigidAxles - 1));
+            double scale = p.UnitScale > 0 ? p.UnitScale : 1.0;
+            var offsets = new double[count];
+            for (int i = 0; i < count; i++) offsets[i] = i * 1.35 * scale;
+            return offsets;
+        }
+
+        /// <summary>轨迹[0]为前轴中心，其余为每个可见车轮中心。预览和最终出图共享此几何。</summary>
+        public static List<Point2d>[] BuildWheelCenterTracks(IList<Frame> frames, VehicleParams p,
+            bool includeWheelTracks = true)
+        {
+            double[] rear = includeWheelTracks ? RearAxleOffsets(p, false) : new double[0];
+            double[] trailer = includeWheelTracks && p.Articulated ? RearAxleOffsets(p, true) : new double[0];
+            int count = includeWheelTracks ? 1 + 2 * (1 + rear.Length + trailer.Length) : 1;
+            var tracks = new List<Point2d>[count];
+            for (int i = 0; i < count; i++) tracks[i] = new List<Point2d>(frames == null ? 0 : frames.Count);
+            if (frames == null) return tracks;
+            double half = p.WheelTrack * 0.5;
+            foreach (Frame f in frames)
+            {
+                Point2d front = FrontAxle(f, p);
+                tracks[0].Add(front);
+                if (!includeWheelTracks) continue;
+                Vector2d n1 = new Vector2d(-f.U1.Y, f.U1.X);
+                Vector2d n2 = new Vector2d(-f.U2.Y, f.U2.X);
+                int t = 1;
+                tracks[t++].Add(front + half * n1); tracks[t++].Add(front - half * n1);
+                foreach (double offset in rear)
+                {
+                    Point2d axle = f.O1 + offset * f.U1;
+                    tracks[t++].Add(axle + half * n1); tracks[t++].Add(axle - half * n1);
+                }
+                foreach (double offset in trailer)
+                {
+                    Point2d axle = f.O2 + offset * f.U2;
+                    tracks[t++].Add(axle + half * n2); tracks[t++].Add(axle - half * n2);
+                }
+            }
+            return tracks;
+        }
+
+        /// <summary>与静态/鼠标预览共用的车轮几何；回放可传录制的真实轮角，而不是最大转角标签。</summary>
+        public static List<Point2d[]> TireRectsWithSteer(Frame f, VehicleParams p,
+            double tireLen, double tireWidth, double steer)
+        {
             var res = new List<Point2d[]>();
             double half = p.WheelTrack / 2.0;
             Vector2d n1 = new Vector2d(-f.U1.Y, f.U1.X);
 
             // 前轴中心与前轮转角
             Point2d frontAxle = f.O1 + p.TractorWheelbase * f.U1;
-            double steer = 0.0;
-            if (steerSign != 0) steer = steerSign * FrontSteerAngle(p);
             double phi1 = Math.Atan2(f.U1.Y, f.U1.X);
             Vector2d frontTireDir = new Vector2d(Math.Cos(phi1 + steer), Math.Sin(phi1 + steer));
 
@@ -2701,19 +2805,23 @@ namespace TruckTurn
             res.Add(TireRect(fr, frontTireDir, tireLen, tireWidth));
 
             // 后轴轮胎（与牵引车航向一致）
-            Point2d rl = f.O1 + half * n1;
-            Point2d rr = f.O1 - half * n1;
-            res.Add(TireRect(rl, f.U1, tireLen, tireWidth));
-            res.Add(TireRect(rr, f.U1, tireLen, tireWidth));
+            foreach (double offset in RearAxleOffsets(p, false))
+            {
+                Point2d axle = f.O1 + offset * f.U1;
+                res.Add(TireRect(axle + half * n1, f.U1, tireLen, tireWidth));
+                res.Add(TireRect(axle - half * n1, f.U1, tireLen, tireWidth));
+            }
 
             // 挂车后轴轮胎（与挂车航向一致）
             if (p.Articulated)
             {
                 Vector2d n2 = new Vector2d(-f.U2.Y, f.U2.X);
-                Point2d tl = f.O2 + half * n2;
-                Point2d tr = f.O2 - half * n2;
-                res.Add(TireRect(tl, f.U2, tireLen, tireWidth));
-                res.Add(TireRect(tr, f.U2, tireLen, tireWidth));
+                foreach (double offset in RearAxleOffsets(p, true))
+                {
+                    Point2d axle = f.O2 + offset * f.U2;
+                    res.Add(TireRect(axle + half * n2, f.U2, tireLen, tireWidth));
+                    res.Add(TireRect(axle - half * n2, f.U2, tireLen, tireWidth));
+                }
             }
             return res;
         }

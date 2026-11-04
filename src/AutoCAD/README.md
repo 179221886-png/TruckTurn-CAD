@@ -1,6 +1,6 @@
-# TruckTurn AutoCAD port (v5.3)
+# TruckTurn AutoCAD port (v5.4.0)
 
-This directory contains five AutoCAD managed plug-in builds. They share the same source files in `src/` and register `TRUCKDRIVE`, `TRUCKTURN90`, `CARRIERDRIVE`, and `CAR`.
+This directory contains five AutoCAD managed plug-in builds. They share the same source files in `src/` and register `TRUCKDRIVE`, `TRUCKTURN90`, `CARRIERDRIVE`, `CAR`, `FIREDRIVE`, `FIRE`, `TTPLAY`, and `TTSTOP`. Version 5.4.0 includes fire selection, recorded-route playback, and dimensional consistency fixes.
 
 | Project | Target AutoCAD releases | Target framework | Autodesk `AutoCAD.NET` package |
 | --- | --- | --- | --- |

@@ -42,6 +42,17 @@ namespace TruckTurn
         {
             Console.OutputEncoding = Encoding.UTF8;
 
+            if (args.Length > 0 && args[0] == "dimensions")
+                return RunDimensionConsistencyRegression() == 0 ? 0 : 1;
+
+            if (args.Length > 0 && args[0] == "fireplayback")
+                return RunFirePlaybackRegression() == 0 ? 0 : 1;
+
+            if (args.Length > 0 && args[0] == "p1")
+            {
+                return RunP1FixRegression() == 0 ? 0 : 1;
+            }
+
             // Phase 1 跨运车运动学快速回归：不启动 CAD，不跑原货车长耗时用例。
             if (args.Length > 0 && args[0] == "carrier")
             {
@@ -142,6 +153,10 @@ namespace TruckTurn
 
             int fail = 0;
 
+            fail += RunP1FixRegression();
+            fail += RunDimensionConsistencyRegression();
+            fail += RunFirePlaybackRegression();
+
             // ---- 与 Python 原型同采样步长(1°)，用于逐项对齐 ----
             Console.WriteLine("-- 与 Python 原型对齐（step=1.0°）--");
             fail += Run("刚性", articulated: false, 45.0, 1.0);
@@ -225,6 +240,25 @@ namespace TruckTurn
                 : "结论：存在 " + fail + " 个未通过场景！");
 
             return fail == 0 ? 0 : 1;
+        }
+
+        static int RunFirePlaybackRegression()
+        {
+            int failures = 0;
+            Console.WriteLine("\n-- 消防车选型及统一回放持久化/对抗回归 --");
+            try { PlaybackVerify.Run(); }
+            catch (Exception ex)
+            {
+                failures++;
+                Console.WriteLine("[FAIL] PlaybackVerify: " + ex);
+            }
+            try { FireVehicleVerify.Run(); }
+            catch (Exception ex)
+            {
+                failures++;
+                Console.WriteLine("[FAIL] FireVehicleVerify: " + ex);
+            }
+            return failures;
         }
 
         static int RunVehicleOutputModeSerialization()

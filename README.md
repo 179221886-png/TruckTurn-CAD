@@ -1,38 +1,75 @@
-# TruckTurn 5.3.1 · CAD 车辆转弯与扫掠包络
+# TruckTurn 5.4.0
 
-TruckTurn 在 CAD 中交互式绘制货车和集装箱跨运车的行驶轨迹、轮迹及扫掠包络。支持货车整车与铰接车，以及跨运车的前桥转向、后桥转向、反相四轮、蟹行等运动方式。可选择只显示首尾车体，或保留所有点击节点。
+在CAD中模拟货车整车、铰接半挂、集装箱搬运车和两轴消防车的行驶轨迹、轮迹及扫掠包络。支持交互驾驶、倒车、仅保留首尾车体或保留全部节点，以及录制后的动画回放。
 
-此包同时整理 AutoCAD 与浩辰 CAD（GstarCAD）的版本。**各 DLL 只能加载到下表指定的 CAD 宿主，不可交叉加载。**
+本次统一交付AutoCAD、浩辰CAD、中望CAD，共12组Windows64位DLL。**只能加载与软件及年份对应的DLL。编译和离线回归通过，不代表所有CAD年份均已完成实机验收。**
 
-| CAD 宿主 | 目标运行时 | DLL 位置 | 状态 |
-| --- | --- | --- | --- |
-| AutoCAD 2018 | .NET Framework 4.6 | `dist/AutoCAD/2018/` | 编译验证；待对应版本实机验证 |
-| AutoCAD 2019–2020 | .NET Framework 4.7 | `dist/AutoCAD/2019-2020/` | 编译验证；待对应版本实机验证 |
-| AutoCAD 2021–2024 | .NET Framework 4.8 | `dist/AutoCAD/2021-2024/` | 编译验证；待对应版本实机验证 |
-| AutoCAD 2025–2026 | .NET 8 目标 | `dist/AutoCAD/2025-2026/` | 编译验证；不同更新补丁待实机验证 |
-| AutoCAD 2027 | .NET 10 | `dist/AutoCAD/2027/` | 编译验证；待对应版本实机验证 |
-| 浩辰 CAD 2025 | .NET Framework 4.8 | `dist/GstarCAD/2025/` | 沿用 5.3 交付版 |
-| 浩辰 CAD 2026 | .NET 8 | `dist/GstarCAD/2026/` | 沿用 5.3 交付版 |
+[下载三平台交付包](https://github.com/179221886-png/TruckTurn-CAD/releases/tag/v5.4.0) · [安装及操作指南](docs/TruckTurn_5.4_安装与使用指南.md) · [本次更新](RELEASE_NOTES.md)
 
-AutoCAD 的分组依据为 [Autodesk 官方 Managed .NET 兼容性表](https://help.autodesk.com/cloudhelp/2027/CHS/AutoCAD-Customization/files/GUID-A6C680F2-DE2E-418A-A182-E4884073338A.htm)。AutoCAD 2025 Update 1.4+ 与 2026 Update 1.2+ 已将宿主更新到 .NET 10；Autodesk 表示现有 .NET 8 应用通常仍能运行，但可能存在兼容性例外（[2025 更新说明](https://help.autodesk.com/cloudhelp/2025/ENU/AutoCAD-WhatsNew/files/GUID-07450FCA-16CA-4D7A-8EA2-9CE842631D75.htm)、[2026 更新说明](https://help.autodesk.com/cloudhelp/2026/ENU/AutoCAD-WhatsNew/files/GUID-FAB1960D-49C1-4A12-B128-5511F7889AB9.htm)）。编译成功并不等于全部版本已完成实机测试，以上补丁尤其要现场确认。
+## 版本选择
 
-## 安装与使用
+|CAD软件|年份|目标运行时|DLL位置|
+|---|---|---|---|
+|AutoCAD|2018|.NET Framework 4.6|dist/AutoCAD/2018/TruckTurn.AutoCAD2018.dll|
+|AutoCAD|2019–2020|.NET Framework 4.7|dist/AutoCAD/2019-2020/TruckTurn.AutoCAD2019_2020.dll|
+|AutoCAD|2021–2024|.NET Framework 4.8|dist/AutoCAD/2021-2024/TruckTurn.AutoCAD2021_2024.dll|
+|AutoCAD|2025–2026|.NET 8目标|dist/AutoCAD/2025-2026/TruckTurn.AutoCAD2025_2026.dll|
+|AutoCAD|2027|.NET 10|dist/AutoCAD/2027/TruckTurn.AutoCAD2027.dll|
+|浩辰CAD|2025|.NET Framework 4.8|dist/GstarCAD/2025/TruckTurn.GstarCAD2025.dll|
+|浩辰CAD|2026|.NET 8|dist/GstarCAD/2026/TruckTurn.dll|
+|中望CAD|2022|.NET Framework 4.7|dist/ZWCAD/2022/TruckTurn.ZWCAD2022.dll|
+|中望CAD|2023|.NET Framework 4.7|dist/ZWCAD/2023/TruckTurn.ZWCAD2023.dll|
+|中望CAD|2024|.NET Framework 4.7|dist/ZWCAD/2024/TruckTurn.ZWCAD2024.dll|
+|中望CAD|2025|.NET Framework 4.7|dist/ZWCAD/2025/TruckTurn.ZWCAD2025.dll|
+|中望CAD|2026|.NET Framework 4.7|dist/ZWCAD/2026/TruckTurn.ZWCAD2026.dll|
 
-1. 从 `dist` 找到与 CAD 年份完全对应的 **TruckTurn DLL**，复制到本机固定文件夹。AutoCAD 2018 还须将同目录的 `System.ValueTuple.dll` 一起复制，其许可证和第三方通知也随包附上。AutoCAD 2025–2027 的 `.deps.json` 请保持与同名 DLL 同目录。
-2. 在 CAD 命令行执行 `NETLOAD`，选择该 DLL。若 CAD 的安全加载拦截插件，把该文件夹加入 `TRUSTEDPATHS`；不要为加载插件而长期关闭安全加载。
-3. 输入 `TRUCKDRIVE` 开始连续绘制货车轨迹，或输入 `TRUCKTURN90` 绘制一键 90° 转弯；输入 `CARRIERDRIVE`（简写 `CAR`）开始跨运车轨迹。
-4. 在选型窗填写与项目一致的设备尺寸、轴距、轮距、转向能力及集装箱类型，再按界面提示确认行驶节点；`X` 完成出图。
+中望需要支持.NET的专业版或相应行业版，标准版不支持；2027 Beta、未来版本、32位、Linux和鸿蒙不在本次交付范围。[官方版本比较](https://www.zwsoft.com/user-guide/differences-between-zwcad-standard-professional-and-mfg)、[官方开发支持](https://www.zwsoft.cn/support/zwcad-devdoc)。
 
-更完整的参数解释和操作步骤见 [`docs/TruckTurn_5.3_插件使用说明.docx`](docs/TruckTurn_5.3_插件使用说明.docx)；AutoCAD 的现场检查步骤见 [`docs/AutoCAD_实机验收清单.md`](docs/AutoCAD_实机验收清单.md)。Word 文档沿用浩辰版 5.3 的说明，AutoCAD 的 DLL 选择以本页为准。
+AutoCAD分组参考[官方Managed .NET兼容性表](https://help.autodesk.com/cloudhelp/2027/CHS/AutoCAD-Customization/files/GUID-A6C680F2-DE2E-418A-A182-E4884073338A.htm)。2025 Update 1.4+、2026 Update 1.2+的宿主升级到.NET10后，.NET8应用通常仍能运行，但这些补丁须现场测试。[2025说明](https://help.autodesk.com/cloudhelp/2025/ENU/AutoCAD-WhatsNew/files/GUID-07450FCA-16CA-4D7A-8EA2-9CE842631D75.htm)、[2026说明](https://help.autodesk.com/cloudhelp/2026/ENU/AutoCAD-WhatsNew/files/GUID-FAB1960D-49C1-4A12-B128-5511F7889AB9.htm)。
+
+## 快速使用
+
+1. 关闭并重启CAD，进入对应软件和年份目录。AutoCAD2018的System.ValueTuple.dll及许可证须一并保留；随包的.deps.json保持与DLL同目录。
+2. 用NETLOAD加载该目录的TruckTurn DLL。若被安全加载拦截，只将固定插件目录加入可信位置，不要关闭全局安全保护。
+3. 选择命令、设置与图面实际数值一致的图纸单位及车型参数，按提示放置车辆并确认节点；连续驾驶用X结束出图。
+4. 出图后选择P打开动画，或用TTPLAY选择新生成的完整结果块。
+
+|功能|命令|
+|---|---|
+|货车整车或铰接半挂连续驾驶|TRUCKDRIVE|
+|一键90°转弯|TRUCKTURN90|
+|集装箱搬运车|CARRIERDRIVE，或CAR|
+|两轴消防车|FIREDRIVE，或FIRE|
+|轨迹动画回放|TTPLAY|
+|关闭动画并清理临时车辆|TTSTOP|
+
+首尾车体选项只影响车体数量，不删除中间包络、轮迹或录制数据。旧版纯静态轨迹没有回放快照，不能直接还原动画。现有图块不会因重新选型而自动更新，修正尺寸后应重新绘制。
+
+## 5.4.0主要更新
+
+- 新增消防车专属选型，区分厂家公开尺寸与插件估算参数。
+- 新增路线播放、暂停、进度定位、倍速和循环；使用临时图形，不逐帧向DWG写入车辆实体。
+- 新增中望2022—2026五组适配；12组DLL版本元数据统一为5.4.0.0。
+- 修复半挂车反复确认尺寸缩水、搭接总长与预览不一致，补齐精度保留、轮胎外伸/净距校验、多轴外观与轮迹一致性。
+- 更新车辆侧视预览，保留首尾/全部节点模式及已有实时包络、平滑与长路径缓存优化。
+
+## 数据口径与工程边界
+
+集装箱外形尺寸参考国际标准ISO668，GP为General Purpose普通用途箱、HC为High Cube高箱；2×20为组合工况，不是独立ISO箱型。ISO不能当作搬运车或消防车的厂家参数认证。[ISO668](https://www.iso.org/standard/76912.html)。
+
+通用货车轴距/前后悬、轴组1.35m示意间距、搬运车通用模板及部分消防参数属于可编辑假设。多轴外观仍使用等效两轴运动学；消防目前仅支持两轴普通前桥转向。二维轨迹不代替载重稳定性、实际驾驶、净高校核或消防通行审查。
+
+本包通过对应API编译、源码链接回归、命令/依赖/架构及哈希检查，但未完成12组真实CAD逐一验收。先在测试图中核对尺寸、米/毫米单位、转弯/倒车、X出图和动画清理。见[验证及已知限制](docs/验证与已知限制.md)、[AutoCAD验收](docs/AutoCAD_实机验收清单.md)、[中望验收](docs/ZWCAD_实机验收清单.md)。
 
 ## 源码与构建
 
-- `src/AutoCAD/`：AutoCAD 五组目标项目，使用 Autodesk 官方 [`AutoCAD.NET`](https://www.nuget.org/packages/AutoCAD.NET) NuGet API 包作为编译引用。
-- `src/GstarCAD/`：浩辰 CAD 2025/2026 工程和离线几何回归验证器。构建浩辰工程时须自行从有权使用的浩辰 SDK/安装中取得 `GcMgd.dll`、`GcDbMgd.dll`、`GcCoreMgd.dll`，分别放入 `src/GstarCAD/lib2025/` 与 `src/GstarCAD/lib/`；这些第三方程序集不包含在仓库中。
-- 交付 DLL 位于 `dist/`，不包含 CAD 宿主的 API 程序集。
+- src/AutoCAD：五组项目，使用Autodesk官方AutoCAD.NET版本化API引用。
+- src/GstarCAD：浩辰2025/2026项目及离线验证器。须自行提供合法GcMgd/GcDbMgd/GcCoreMgd引用，放在lib2025与lib，不随插件分发。
+- src/ZWCAD：五个年版项目、构建脚本及移植说明，须提供同年ZwManaged/ZwDatabaseMgd；目标.NET Framework4.7，非.NET8。[构建说明](src/ZWCAD/README.md)。
+- dist：可加载DLL和必要依赖，不含厂商SDK。BUILD_MANIFEST.json及SHA256SUMS.txt用于追溯和校验。
 
-从仓库根目录执行对应项目的 `dotnet build -c Release`。旧版 AutoCAD 工程还需对应 .NET Framework 引用程序集；AutoCAD 2027 工程需要 .NET 10 SDK。几何回归验证器可通过 `dotnet run -c Release --project src/GstarCAD/TruckTurn.Verify/TruckTurn.Verify.csproj` 运行。CAD 命令交互、NETLOAD 与图面效果需要在实际 CAD 中验收，离线回归不能替代。
+仓库中原5.3 Word仅保留为历史参考；本次交付包以[5.4指南](docs/TruckTurn_5.4_安装与使用指南.md)为准，不要按旧Word中的DLL名称选择本次文件。
 
-## 权利与注意事项
+## 权利说明
 
-TruckTurn 自身暂不提供开源许可证；公开查看源码**不等于**获得复制、修改或再发布授权。AutoCAD 2018 随包的 `System.ValueTuple.dll` 按其目录中的 MIT 许可和通知单独分发，不代表 TruckTurn 采用 MIT 许可。Autodesk、AutoCAD、浩辰 CAD 及其 API 程序集属于各自权利人。跨运车内置尺寸是通用参数模板，实际工程应以厂商资料和实测数据复核。插件输出是方案模拟，不代替驾驶操作、安全评估或设备厂商的技术确认。
+TruckTurn暂不添加开源许可证。公开查看源码不等于获得复制、修改或再发布授权，沿用仓库原有权利安排。System.ValueTuple按随包MIT许可和第三方通知单独分发，不代表TruckTurn或CAD API采用MIT许可。Autodesk、浩辰、中望及其API属于各自权利人。插件不绕过CAD许可或关闭安全保护。

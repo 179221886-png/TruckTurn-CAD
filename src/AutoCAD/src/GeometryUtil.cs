@@ -56,24 +56,27 @@ namespace TruckTurn
         /// 返回 (vertices, segments)：segments[i] = 起点索引，segments[i+1] - 1 = 终点索引（含）。
         /// 用于把"采样密集但实际是直线"的折线段压成 2 个端点。
         /// </summary>
-        public static List<Point2d> SimplifyPolyline(List<Point2d> pts, double tol = 1e-3)
+        public static List<Point2d> SimplifyPolyline(List<Point2d> pts, double tol = 1e-3,
+            double distanceTieTolerance = 0.0)
         {
             var keep = new bool[pts.Count];
             keep[0] = true;
             keep[pts.Count - 1] = true;
-            Rdp(pts, 0, pts.Count - 1, tol, keep);
+            Rdp(pts, 0, pts.Count - 1, tol, keep, distanceTieTolerance);
             var res = new List<Point2d>();
             for (int i = 0; i < pts.Count; i++) if (keep[i]) res.Add(pts[i]);
             return res;
         }
 
-        private static void Rdp(List<Point2d> pts, int lo, int hi, double tol, bool[] keep)
+        private static void Rdp(List<Point2d> pts, int lo, int hi, double tol, bool[] keep,
+            double distanceTieTolerance)
         {
             if (hi <= lo + 1) return;
             var a = pts[lo]; var b = pts[hi];
             double vx = b.X - a.X, vy = b.Y - a.Y;
             double len2 = vx * vx + vy * vy;
             int worstIdx = -1; double worst = 0.0;
+            double selectedDistance = 0.0;
             for (int k = lo + 1; k < hi; k++)
             {
                 var p = pts[k];
@@ -88,13 +91,20 @@ namespace TruckTurn
                     double dy = p.Y - (a.Y + t * vy);
                     d = Math.Sqrt(dx * dx + dy * dy);
                 }
-                if (d > worst) { worst = d; worstIdx = k; }
+                // 几乎等远的点稳定选先出现者，避免米/毫米舍入差使整棵递归选点分叉。
+                // worst 仍记录真实最大误差；仅选点使用纳米级 tie 容差，不放宽 RDP 精度。
+                if (worstIdx < 0 || d > selectedDistance + distanceTieTolerance)
+                {
+                    selectedDistance = d;
+                    worstIdx = k;
+                }
+                if (d > worst) worst = d;
             }
             if (worstIdx > 0 && worst > tol)
             {
                 keep[worstIdx] = true;
-                Rdp(pts, lo, worstIdx, tol, keep);
-                Rdp(pts, worstIdx, hi, tol, keep);
+                Rdp(pts, lo, worstIdx, tol, keep, distanceTieTolerance);
+                Rdp(pts, worstIdx, hi, tol, keep, distanceTieTolerance);
             }
         }
 
@@ -107,7 +117,8 @@ namespace TruckTurn
         /// 把环展开成 [start … start] 的开放折线再简化，最后去掉重复的闭合尾点。
         /// tol 单位为米 = 允许偏离原始环的最大距离。
         /// </summary>
-        public static List<Point2d> SimplifyClosedLoop(List<Point2d> loop, double tol)
+        public static List<Point2d> SimplifyClosedLoop(List<Point2d> loop, double tol,
+            double distanceTieTolerance = 0.0)
         {
             if (loop == null || loop.Count < 4)
                 return new List<Point2d>(loop ?? new List<Point2d>());
@@ -129,7 +140,7 @@ namespace TruckTurn
             for (int i = 0; i <= loop.Count; i++)
                 open.Add(loop[(start + i) % loop.Count]);
 
-            var simp = SimplifyPolyline(open, tol);
+            var simp = SimplifyPolyline(open, tol, distanceTieTolerance);
             if (simp.Count >= 2 && Dist(simp[0], simp[simp.Count - 1]) < 1e-9)
                 simp.RemoveAt(simp.Count - 1);
             return simp;
@@ -285,14 +296,18 @@ namespace TruckTurn
         ///   只拉伸短边，把 1179 顶点的反射伪尖角变成均匀间距的小凸起（用户看到的
         ///   「规律性波浪」）。
         ///
-        /// 返回 (处理后的环, 实际外推总量米)。
+        /// 返回 (处理后的环, 实际外推总量)，长度均与输入图形单位一致。
+        /// unitScale 表示每米的图形单位，保证米图与毫米图采用同样的物理稀化精度。
         /// </summary>
         public static (List<Point2d> loop, double outset) SimplifyEnvelopeForSpline(
-            List<Point2d> envelope, double tol, int maxIter = 6, int smoothIters = 40)
+            List<Point2d> envelope, double tol, int maxIter = 6, int smoothIters = 40,
+            double unitScale = 1.0)
         {
+            double scale = unitScale > 0.0 && !double.IsNaN(unitScale) && !double.IsInfinity(unitScale)
+                ? unitScale : 1.0;
             // ① 大容差 RDP：直接砍到几十顶点（实测 5cm 把 1179 砍到 35）
-            const double rdpTol = 0.05;
-            var simp = SimplifyClosedLoop(envelope, rdpTol);
+            double rdpTol = 0.05 * scale;
+            var simp = SimplifyClosedLoop(envelope, rdpTol, distanceTieTolerance: 1e-9 * scale);
             if (simp.Count < 3) return (new List<Point2d>(envelope), 0.0);
 
             // ② 迭代外推补偿（不再做 Laplacian —— 35 顶点不需要平滑，平滑反而磨圆车体折角）
@@ -307,7 +322,7 @@ namespace TruckTurn
                     var (d, _, _) = DistancePointToPolyline(p, cur);
                     if (d > maxOut) maxOut = d;
                 }
-                if (maxOut <= 1e-9) break;
+                if (maxOut <= 1e-9 * scale) break;
                 cur = OffsetClosedLoop(cur, maxOut);
                 total += maxOut;
             }

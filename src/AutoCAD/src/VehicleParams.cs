@@ -14,6 +14,11 @@ namespace TruckTurn
     {
         // ---------- 车型标志 ----------
         public bool Articulated = true;   // true=铰接半挂车, false=刚性单车
+        // 消防模板车宽按含固定突出物的最大宽度输入，示意后视镜不能再伸到计算包络外。
+        // 仅影响车体图形；普通货车保持既有样式。动画 XML 快照会保留此标记。
+        public bool BodyWidthIncludesMirrors = false;
+        // 老图/旧动画沿用 CabRearX 的安全自动退让；新选型明确保存有效驾驶室几何，禁止隐藏改值。
+        public bool ExplicitCabGeometry = false;
 
         // ---------- 牵引车/单车共用车头部分 ----------
         public double TractorWheelbase;       // 前后轴距 L（前轴->后轴）。刚性单车即整车轴距
@@ -31,7 +36,7 @@ namespace TruckTurn
         /// <summary>
         /// 驾驶室后壁相对鞍座的前移量(m)：驾驶室后壁 = 鞍座 + 本值。
         /// 真车驾驶室后方只有窄车架，挂车前部悬在车架上方，所以「挂车压住车架」在平面图里是正常的；
-        /// 真正不能碰的是驾驶室。本值不足时 <see cref="CabRearX"/> 会自动抬升到安全值。
+        /// 真正不能碰的是驾驶室。新参数不再自动改值，选型确认时须通过净距校验。
         /// </summary>
         public double KingpinToCabRear = 1.3;
         /// <summary>牵引车底盘纵梁宽度(m)。真车约 0.9~1.1m，远窄于驾驶室。</summary>
@@ -63,7 +68,13 @@ namespace TruckTurn
         /// </summary>
         public double CabRearX()
         {
-            double ak = TractorRearToKingpin;
+            if (ExplicitCabGeometry) return TractorRearToKingpin + KingpinToCabRear;
+            return TractorRearToKingpin + Math.Max(SafeCabGap(), KingpinToCabRear);
+        }
+
+        /// <summary>给定挂车外宽、前悬与最大铰接角时，驾驶室后壁到鞍座要求的最小净距（图形单位）。</summary>
+        public double SafeCabGap()
+        {
             double tf = TrailerKingpinToFront;
             double half = TrailerWidth * 0.5;
             double dmax = MaxArticulationAngleDeg * Math.PI / 180.0;
@@ -71,8 +82,7 @@ namespace TruckTurn
             double phi = Math.Atan2(tf, half);
             double deltaStar = Math.PI / 2.0 - phi;
             double swing = (deltaStar <= dmax) ? A : A * Math.Sin(dmax + phi);
-            double safe = ak + swing + CabClearance;
-            return Math.Max(safe, ak + KingpinToCabRear);
+            return swing + CabClearance;
         }
 
         // ---------- 刚性单车专属补充（仅 Articulated=false 时有效） ----------
@@ -142,17 +152,18 @@ namespace TruckTurn
 
         // ---------- 供选型窗体读取/展示的便捷属性（单位 m） ----------
 
-        /// <summary>主车长(m)：刚性 = 整车长；铰接 = 挂车长（与牵引车同宽等长假设无关）</summary>
+        /// <summary>直线组合实际首尾跨度(m)。半挂在鞍座处正常搭接，不能把两车全长直接相加。</summary>
         public double LengthMeters()
         {
-            if (UnitScale <= 0) UnitScale = 1000;
             if (Articulated)
             {
-                double tractor = TractorFrontOverhang + TractorWheelbase + TractorRearToKingpin;
-                double trailer = TrailerKingpinToRearAxle + TrailerRearOverhang;
-                return (tractor + trailer) / UnitScale;
+                double front = Math.Max(TractorFrontOverhang + TractorWheelbase,
+                    TractorRearToKingpin + TrailerKingpinToFront);
+                double rear = Math.Min(-ChassisRearOverhang,
+                    TractorRearToKingpin - TrailerKingpinToRearAxle - TrailerRearOverhang);
+                return (front - rear) / EffectiveUnitScale;
             }
-            return (TractorFrontOverhang + TractorWheelbase + RigidRearOverhang) / UnitScale;
+            return (TractorFrontOverhang + TractorWheelbase + RigidRearOverhang) / EffectiveUnitScale;
         }
 
         /// <summary>
@@ -167,24 +178,129 @@ namespace TruckTurn
         /// </summary>
         public double TrailerLengthMeters()
         {
-            if (UnitScale <= 0) UnitScale = 1000;
             if (!Articulated) return LengthMeters();
-            return (TrailerKingpinToFront + TrailerKingpinToRearAxle + TrailerRearOverhang) / UnitScale;
+            return (TrailerKingpinToFront + TrailerKingpinToRearAxle + TrailerRearOverhang) / EffectiveUnitScale;
         }
 
-        /// <summary>牵引车长(m) = 前悬 + 轴距 + 后轴到鞍座。刚性车返回 0（该字段在刚性模式下隐藏）。</summary>
+        /// <summary>牵引车全长(m) = 前悬 + 轴距 + 底盘后悬（不是后轴到鞍座）。</summary>
         public double TractorLengthMeters()
         {
-            if (UnitScale <= 0) UnitScale = 1000;
             if (!Articulated) return 0;
-            return (TractorFrontOverhang + TractorWheelbase + TractorRearToKingpin) / UnitScale;
+            return (TractorFrontOverhang + TractorWheelbase + ChassisRearOverhang) / EffectiveUnitScale;
+        }
+
+        /// <summary>刚性车驾驶室示意长度，供CAD平面及侧视共同使用，不改变真实轴距/前后悬。</summary>
+        public double RigidCabLengthMeters()
+        {
+            double total = (TractorFrontOverhang + TractorWheelbase + RigidRearOverhang) / EffectiveUnitScale;
+            return Math.Min(0.45 * total, Math.Min(2.6, Math.Max(1.2, 0.25 * total)));
         }
 
         /// <summary>主车宽(m)：刚性 = 整车宽；铰接 = 挂车宽（与牵引车同宽假设）</summary>
         public double WidthMeters()
         {
-            if (UnitScale <= 0) UnitScale = 1000;
-            return (Articulated ? TrailerWidth : TractorWidth) / UnitScale;
+            return (Articulated ? TrailerWidth : TractorWidth) / EffectiveUnitScale;
+        }
+
+        private double EffectiveUnitScale { get { return IsFinite(UnitScale) && UnitScale > 0 ? UnitScale : 1000; } }
+
+        public VehicleParams Copy() { return (VehicleParams)MemberwiseClone(); }
+
+        /// <summary>按物理尺寸转换单位，保留独立轴距、鞍座、轮距与所有未编辑的参数。</summary>
+        public VehicleParams InUnitScale(double scale)
+        {
+            if (!IsFinite(scale) || scale <= 0) throw new ArgumentOutOfRangeException("scale");
+            var p = Copy();
+            double ratio = scale / EffectiveUnitScale;
+            p.TractorWheelbase *= ratio; p.TractorFrontOverhang *= ratio;
+            p.TractorRearToKingpin *= ratio; p.TractorWidth *= ratio;
+            p.TrailerKingpinToRearAxle *= ratio; p.TrailerRearOverhang *= ratio;
+            p.TrailerWidth *= ratio; p.KingpinToCabRear *= ratio;
+            p.ChassisWidth *= ratio; p.ChassisRearOverhang *= ratio;
+            p.CabClearance *= ratio; p.TrailerKingpinToFront *= ratio;
+            p.RigidRearOverhang *= ratio; p.WheelTrack *= ratio;
+            p.UnitScale = scale;
+            return p;
+        }
+
+        public static bool IsFinite(double value) { return !double.IsNaN(value) && !double.IsInfinity(value); }
+
+        /// <summary>固定示意轮胎0.50×0.25m在±最大转角内的最大纵/横向半投影。</summary>
+        public static void WheelExtentsMeters(double maxSteerDeg, out double halfLength, out double halfWidth)
+        {
+            double angle = Math.Abs(maxSteerDeg) * Math.PI / 180.0;
+            if (!IsFinite(angle)) { halfLength = halfWidth = double.NaN; return; }
+            angle = Math.Min(Math.PI / 2.0, angle);
+            double x = Math.Min(angle, Math.Atan2(0.125, 0.25));
+            double y = Math.Min(angle, Math.Atan2(0.25, 0.125));
+            halfLength = 0.25 * Math.Cos(x) + 0.125 * Math.Sin(x);
+            halfWidth = 0.125 * Math.Cos(y) + 0.25 * Math.Sin(y);
+        }
+
+        /// <summary>纯校验：不钳制、不回写任何尺寸。长度采用当前图形单位，误差容限随单位同比例。</summary>
+        public bool ValidateGeometry(out string error)
+        {
+            error = null;
+            double[] values = { UnitScale, TractorWheelbase, TractorFrontOverhang, TractorRearToKingpin,
+                TractorWidth, TrailerKingpinToRearAxle, TrailerRearOverhang, TrailerWidth,
+                KingpinToCabRear, ChassisWidth, ChassisRearOverhang, CabClearance,
+                TrailerKingpinToFront, MaxArticulationAngleDeg, RigidRearOverhang,
+                WheelTrack, SteerAngleDeg, TurnAngleDeg };
+            foreach (double value in values)
+                if (!IsFinite(value)) { error = "参数必须是有限数字，不能包含 NaN 或无穷大。"; return false; }
+            if (UnitScale <= 0 || UnitScale > 1000000) error = "图纸单位比例必须大于0且不超过1000000单位/米。";
+            else if (TractorWheelbase <= 0 || TractorWidth <= 0 || WheelTrack <= 0) error = "轴距、车宽、轮距必须大于0。";
+            else if (TractorFrontOverhang < 0 || RigidRearOverhang < 0 || ChassisRearOverhang < 0)
+                error = "前悬、后悬不能为负数。";
+            else if (SteerAngleDeg < 1 || SteerAngleDeg > 70) error = "前轮最大转角请填写1～70度。";
+            else if (WheelTrack > TractorWidth + 1e-9 * UnitScale) error = "轮距不能超过车宽。";
+            else if (!Articulated && (RigidAxles < 2 || RigidAxles > 6)) error = "刚性车轴数请填写2～6的整数。";
+            else if (!Articulated && 1.35 * Math.Max(0, RigidAxles - 2) * UnitScale >= TractorWheelbase)
+                error = "当前轴数按1.35m示意轴间距排列后会越过前轴，请增加轴距或减少轴数。";
+            else if (Articulated)
+            {
+                double tolerance = 1e-9 * UnitScale;
+                if (TrailerKingpinToRearAxle <= 0 || TrailerRearOverhang < 0 || TrailerKingpinToFront < 0 || TrailerWidth <= 0)
+                    error = "挂车轴距、车宽必须大于0，挂车前悬、后悬不能为负数。";
+                else if (TrailerAxles < 1 || TrailerAxles > 3) error = "挂车轴数请填写1～3的整数。";
+                else if (1.35 * Math.Max(0, TrailerAxles - 1) * UnitScale >= TrailerKingpinToRearAxle)
+                    error = "挂车轴组按1.35m示意轴间距排列后会越过鞍座，请核对挂车长度与轴数。";
+                else if ((1.35 * Math.Max(0, TrailerAxles - 1) + 0.25) * UnitScale >
+                    TrailerKingpinToRearAxle + TrailerKingpinToFront + tolerance)
+                    error = "挂车最前轮胎会超出挂车前端，请核对挂车长度、前悬与轴数。";
+                else if (MaxArticulationAngleDeg < 1 || MaxArticulationAngleDeg > 90)
+                    error = "最大铰接角请填写1～90度。";
+                else if (ChassisWidth <= 0 || ChassisWidth > TractorWidth + tolerance || CabClearance < 0 || KingpinToCabRear < 0)
+                    error = "底盘宽度或驾驶室净距无效，请检查耦合尺寸。";
+                else if (TractorRearToKingpin < -ChassisRearOverhang - tolerance ||
+                    TractorRearToKingpin > TractorWheelbase + TractorFrontOverhang + tolerance)
+                    error = "鞍座必须位于牵引车底盘范围内。";
+                else if (ExplicitCabGeometry && KingpinToCabRear + tolerance < SafeCabGap())
+                    error = string.Format(CultureInfo.InvariantCulture,
+                        "驾驶室后壁到鞍座不足：当前挂车宽度、前悬及铰接角要求至少{0:0.######}m。请增大此距离或调整相关参数。", SafeCabGap() / UnitScale);
+                else if (CabRearX() > TractorWheelbase + TractorFrontOverhang - 0.25 * TractorWheelbase + tolerance)
+                    error = "牵引车过短或驾驶室后壁到鞍座过大，无法保留有效驾驶室。请加长牵引车或核对耦合尺寸。";
+            }
+            if (error == null)
+            {
+                double halfLength, halfWidth;
+                WheelExtentsMeters(SteerAngleDeg, out halfLength, out halfWidth);
+                if (WheelTrack + 2.0 * halfWidth * UnitScale > TractorWidth + 1e-9 * UnitScale)
+                    error = "轮胎在允许转角内会超出所填车宽，请减小轮距、转角或增加最大外宽（含突出物）。";
+                else if (Articulated && WheelTrack + 0.25 * UnitScale > TrailerWidth + 1e-9 * UnitScale)
+                    error = "挂车轮胎外缘超出所填挂车宽度，请核对轮距与车宽。";
+                else if (TractorFrontOverhang + 1e-9 * UnitScale < halfLength * UnitScale)
+                    error = "前悬不足以包含转向轮胎，轮胎会超出车头；请核对真实前悬。";
+                else if (!Articulated && RigidRearOverhang + 1e-9 * UnitScale < 0.25 * UnitScale)
+                    error = "刚性车后悬不足0.25m，示意轮胎会超出车尾；请核对真实后悬。";
+                else if (Articulated && (ChassisRearOverhang + 1e-9 * UnitScale < 0.25 * UnitScale ||
+                    TrailerRearOverhang + 1e-9 * UnitScale < 0.25 * UnitScale))
+                    error = "牵引车底盘后悬及挂车后悬均需至少0.25m，以包含当前示意轮胎；不会自动加长。";
+            }
+            if (error == null && (!IsFinite(LengthMeters()) || !IsFinite(TractorLengthMeters()) ||
+                !IsFinite(TrailerLengthMeters()) || (Articulated && !IsFinite(CabRearX()))))
+                error = "组合尺寸发生数值溢出，请填写合理的有限尺寸。";
+            return error == null;
         }
 
         /// <summary>主车轴数：刚性 = 整车轴数；铰接 = 挂车轴数（不含车头）</summary>
@@ -209,9 +325,13 @@ namespace TruckTurn
                 KingpinToCabRear, ChassisWidth, ChassisRearOverhang, CabClearance,
                 ShowEnvelope ? 1 : 0, ShowBody ? 1 : 0, ShowWheels ? 1 : 0,
                 ShowGhost ? 1 : 0, ShowFrontTrack ? 1 : 0, ShowRadii ? 1 : 0,
-                ShowAllNodeVehicles ? 1 : 0
+                ShowAllNodeVehicles ? 1 : 0,
+                ExplicitCabGeometry ? 1 : 0,
+                BodyWidthIncludesMirrors ? 1 : 0
             };
-            return string.Join(",", Array.ConvertAll(vals, v => Convert.ToString(v, CultureInfo.InvariantCulture)));
+            return string.Join(",", Array.ConvertAll(vals, v => v is double
+                ? ((double)v).ToString("R", CultureInfo.InvariantCulture)
+                : Convert.ToString(v, CultureInfo.InvariantCulture)));
         }
 
         /// <summary>从逗号分隔字符串解析；兼容旧版 10 字段格式（无车型/轴数）。</summary>
@@ -257,6 +377,8 @@ namespace TruckTurn
             if (a.Length >= 27) p.ShowFrontTrack = n(26) != 0;
             if (a.Length >= 28) p.ShowRadii = n(27) != 0;
             if (a.Length >= 29) p.ShowAllNodeVehicles = n(28) != 0;
+            if (a.Length >= 30) p.ExplicitCabGeometry = n(29) != 0;
+            if (a.Length >= 31) p.BodyWidthIncludesMirrors = n(30) != 0;
             if (p.UnitScale <= 0) p.UnitScale = 1000;
             return p;
         }

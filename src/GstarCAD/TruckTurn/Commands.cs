@@ -17,7 +17,7 @@ namespace TruckTurn
     ///   TRUCKDRIVE  — 连续点击驾驶货车，实时生成扫掠包络与轮迹
     ///   TRUCKTURN90 — 一键让车辆以最小半径原地转 90°，并停在回正位置
     /// </summary>
-    public class TruckTurnCommands : IExtensionApplication
+    public partial class TruckTurnCommands : IExtensionApplication
     {
         private static VehicleParams _params = VehicleParams.Defaults();
 
@@ -65,7 +65,7 @@ namespace TruckTurn
         private const int EnvelopeSmoothIters = 60;
 
         public void Initialize() { LoadFromDrawing(); }
-        public void Terminate() { }
+        public void Terminate() { PlaybackCommands.StopAll(); }
 
         #region 连续驾驶命令：像画多段线一样逐段确认货车位置
         /// <summary>
@@ -96,12 +96,22 @@ namespace TruckTurn
             }
         }
 
-        private void TruckDriveBody(Document doc, Editor ed, Database db, ref string stage)
+        private void TruckDriveBody(Document doc, Editor ed, Database db, ref string stage,
+            VehicleParams selectedVehicle = null, PlaybackVehicleKind routeKind = PlaybackVehicleKind.Truck,
+            string routeName = null, string sourceSummary = null)
         {
             // v4.6.1：选型统一走 PromptVehicleParams（含图纸单位自动判定 + 参数摘要 + null 防御）。
             // 此前 _params 可能因选型窗校验失败而变成 null，后续 Jig 一访问字段就抛
             // NullReferenceException，CAD 只留一行 InvokeWorkerWithException，看起来就是"点了什么都没出来"。
-            if (!PromptVehicleParams(db, ed, ref stage)) return;
+            if (selectedVehicle == null)
+            {
+                if (!PromptVehicleParams(db, ed, ref stage)) return;
+            }
+            else
+            {
+                // 消防车型直接使用真实轴距/前后悬，不能再次走货车按车长比例反解。
+                _params = selectedVehicle;
+            }
 
             // 阶段一：放置前轴中心起始位置
             stage = "阶段一 放置起始点";
@@ -238,9 +248,9 @@ namespace TruckTurn
                     if (driveJig.KwTurn90 == "L" || driveJig.KwTurn90 == "R")
                     {
                         int turn90Sign = driveJig.KwTurn90 == "L" ? 1 : -1;
-                        Point2d front0 = TruckKinematics.FrontAxle(curFrame, _params);
-                        // v4.9：带上行驶方向。倒退 90° 不做挂车拉直（倒着拉不直，物理上铰接角发散）。
-                        var turn90 = TruckKinematics.SimulateTurn90AndStraighten(_params, front0, curFrame.U1, turn90Sign, OutputStepDeg, driveDir);
+                        // 继承完整挂车状态；仅传前轴/车头朝向会把非共线挂车重置并造成跳位。
+                        var turn90 = TruckKinematics.SimulateTurn90AndStraightenFromState(
+                            _params, curFrame, turn90Sign, OutputStepDeg, driveDir);
                         if (turn90 != null && turn90.Count > 1)
                         {
                             var ids90 = new List<ObjectId>();
@@ -449,7 +459,9 @@ namespace TruckTurn
             foreach (var segIds in segEntityIds) blockIds.AddRange(segIds);
             blockIds.AddRange(cumulativeEnvelopeIds);
             blockIds.AddRange(finalIds);
-            GroupPathIntoBlock(db, ed, blockIds);
+            var replayRoute = TryCreateTruckPlayback(ed, allFrames, routeKind, routeName, sourceSummary);
+            ObjectId playbackBlockId = GroupPathIntoBlock(db, ed, blockIds, replayRoute);
+            if (replayRoute != null) PlaybackCommands.OfferPlayback(doc, playbackBlockId);
         }
 
         /// <summary>
@@ -458,9 +470,10 @@ namespace TruckTurn
         /// 在当前空间原点插入 BlockReference（恒等变换，几何位置与原件完全一致）→
         /// 删除原图元。全部在同一事务内，任何一步失败整体回滚，原图元原样保留。
         /// </summary>
-        private void GroupPathIntoBlock(Database db, Editor ed, List<ObjectId> ids)
+        private ObjectId GroupPathIntoBlock(Database db, Editor ed, List<ObjectId> ids,
+            PlaybackRoute replayRoute = null)
         {
-            if (ids == null || ids.Count == 0) return;
+            if (ids == null || ids.Count == 0) return ObjectId.Null;
             var uniq = new List<ObjectId>();
             var seen = new HashSet<ObjectId>();
             foreach (var id in ids)
@@ -468,16 +481,18 @@ namespace TruckTurn
                 if (id.IsNull || id.IsErased || !id.IsValid) continue;
                 if (seen.Add(id)) uniq.Add(id);
             }
-            if (uniq.Count == 0) return;
+            if (uniq.Count == 0) return ObjectId.Null;
 
             try
             {
                 using (var tr = db.TransactionManager.StartTransaction())
                 {
                     var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
-                    string name = "TruckPath";
+                    string prefix = replayRoute != null && replayRoute.Kind == PlaybackVehicleKind.Fire
+                        ? "FirePath" : "TruckPath";
+                    string name = prefix;
                     int k = 1;
-                    while (bt.Has(name)) { name = "TruckPath_" + k; k++; }
+                    while (bt.Has(name)) { name = prefix + "_" + k; k++; }
 
                     var btr = new BlockTableRecord();
                     btr.Name = name;
@@ -497,6 +512,10 @@ namespace TruckTurn
                     curSpace.AppendEntity(br);
                     tr.AddNewlyCreatedDBObject(br, true);
 
+                    // 回放数据和静态结果处于同一事务；保存失败不会留下没有数据的“可回放块”。
+                    if (replayRoute != null)
+                        PlaybackCadStore.Attach(db, tr, br, replayRoute);
+
                     // 删除原图元（放最后：本事务内任一步失败都会整体回滚，原件不动）
                     foreach (var id in uniq)
                     {
@@ -506,11 +525,13 @@ namespace TruckTurn
 
                     tr.Commit();
                     ed.WriteMessage("\n[块] 已把 {0} 个图元打成块「{1}」（可整体移动/复制/删除；要编辑内部用炸开）。", uniq.Count, name);
+                    return br.ObjectId;
                 }
             }
             catch (System.Exception ex)
             {
                 ed.WriteMessage("\n[块] 打块失败（{0}: {1}），已保留原图元不打包。", ex.GetType().Name, ex.Message);
+                return ObjectId.Null;
             }
         }
 
@@ -706,7 +727,9 @@ namespace TruckTurn
             ReportDrawnExtent(ed, frames, "TRUCKTURN90");
             // v4.9.12：出图后自动打成块，方便整体移动/复制/删除
             stage = "打块";
-            GroupPathIntoBlock(db, ed, ids);
+            var replayRoute = TryCreateTruckPlayback(ed, frames,
+                PlaybackVehicleKind.Truck, "货车一键90°轨迹", null);
+            ObjectId playbackBlockId = GroupPathIntoBlock(db, ed, ids, replayRoute);
 
             var radP = TruckKinematics.TurnRadii(_params);
             string dirTxt = dir > 0 ? "前进" : "倒退";
@@ -722,6 +745,7 @@ namespace TruckTurn
             ed.WriteMessage("  车辆最小转弯半径(m): R1={0:F1} 前轮外缘={1:F1} 车身外角={2:F1} 后内轮={3:F1}",
                 radP.Centerline / _params.UnitScale, radP.CurbToCurb / _params.UnitScale,
                 radP.WallToWall / _params.UnitScale, radP.InnerTire / _params.UnitScale);
+            if (replayRoute != null) PlaybackCommands.OfferPlayback(doc, playbackBlockId);
         }
         #endregion
 
@@ -809,7 +833,7 @@ namespace TruckTurn
             ed.WriteMessage("\n[参数] {0}｜图纸单位={1}（1 米 = {2} 图形单位）｜车宽 {3:F2}m",
                 p.Articulated ? "铰接半挂" : "刚性单车", unit, p.UnitScale, p.WidthMeters());
             if (p.Articulated)
-                ed.WriteMessage("｜牵引车 {0:F2}m + 挂车 {1:F2}m = 列车 {2:F2}m",
+                ed.WriteMessage("｜牵引车全长 {0:0.###}m｜挂车全长 {1:0.###}m｜直线组合总长 {2:0.###}m（已计搭接）",
                     p.TractorLengthMeters(), p.TrailerLengthMeters(), p.LengthMeters());
             else
                 ed.WriteMessage("｜整车长 {0:F2}m", p.LengthMeters());
@@ -923,40 +947,12 @@ namespace TruckTurn
             if (needWheels) DrawingUtil.EnsureLayer(db, tr, LayerWheels, 1);
             if (needFrontTrack) DrawingUtil.EnsureLayer(db, tr, LayerFrontTrack, 6);
 
-            double half = _params.WheelTrack / 2.0;
-            var frontCenter = new List<Point2d>();
-            var fL = new List<Point2d>(); var fR = new List<Point2d>();
-            var rL = new List<Point2d>(); var rR = new List<Point2d>();
-            var tL = new List<Point2d>(); var tR = new List<Point2d>();
-
-            foreach (var f in frames)
-            {
-                Vector2d n1 = new Vector2d(-f.U1.Y, f.U1.X);
-                Vector2d n2 = new Vector2d(-f.U2.Y, f.U2.X);
-                Point2d frontAxle = f.O1 + _params.TractorWheelbase * f.U1;
-                frontCenter.Add(frontAxle);
-                fL.Add(frontAxle + half * n1); fR.Add(frontAxle - half * n1);
-                rL.Add(f.O1 + half * n1); rR.Add(f.O1 - half * n1);
-                if (_params.Articulated)
-                {
-                    tL.Add(f.O2 + half * n2); tR.Add(f.O2 - half * n2);
-                }
-            }
-
+            var tracks = TruckKinematics.BuildWheelCenterTracks(frames, _params, needWheels);
             if (needFrontTrack)
-                Add(ids, DrawingUtil.AddPolyline(db, tr, frontCenter, false, LayerFrontTrack));
+                Add(ids, DrawingUtil.AddPolyline(db, tr, tracks[0], false, LayerFrontTrack));
             if (needWheels)
-            {
-                Add(ids, DrawingUtil.AddPolyline(db, tr, fL, false, LayerWheels));
-                Add(ids, DrawingUtil.AddPolyline(db, tr, fR, false, LayerWheels));
-                Add(ids, DrawingUtil.AddPolyline(db, tr, rL, false, LayerWheels));
-                Add(ids, DrawingUtil.AddPolyline(db, tr, rR, false, LayerWheels));
-                if (_params.Articulated)
-                {
-                    Add(ids, DrawingUtil.AddPolyline(db, tr, tL, false, LayerWheels));
-                    Add(ids, DrawingUtil.AddPolyline(db, tr, tR, false, LayerWheels));
-                }
-            }
+                for (int i = 1; i < tracks.Length; i++)
+                    Add(ids, DrawingUtil.AddPolyline(db, tr, tracks[i], false, LayerWheels));
         }
 
         /// <summary>
@@ -981,7 +977,8 @@ namespace TruckTurn
 
             // v4.9.8：包络使用外包补偿后的 Polyline，保留车体真实折角，避免样条外鼓。
             var simplified = GeometryUtil.SimplifyEnvelopeForSpline(
-                envelope, EnvelopeSimplifyTol, smoothIters: EnvelopeSmoothIters);
+                envelope, EnvelopeSimplifyTol, smoothIters: EnvelopeSmoothIters,
+                unitScale: _params.UnitScale);
             Add(ids, DrawingUtil.AddPolyline(
                 db, tr, simplified.loop, true, envLayer));
 
@@ -989,7 +986,7 @@ namespace TruckTurn
             if (doc != null)
                 doc.Editor.WriteMessage(
                     "\n[包络] 顶点 {0} → {1}，外扩补偿 {2:F3} m",
-                    envelope.Count, simplified.loop.Count, simplified.outset);
+                    envelope.Count, simplified.loop.Count, simplified.outset / _params.UnitScale);
         }
 
         /// <summary>

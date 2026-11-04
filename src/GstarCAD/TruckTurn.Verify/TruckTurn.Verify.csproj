@@ -35,6 +35,10 @@
     <Compile Include="GssoftShim.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="CarrierVerify.cs" />
+    <Compile Include="P1FixVerify.cs" />
+    <Compile Include="DimensionConsistencyVerify.cs" />
+    <Compile Include="PlaybackVerify.cs" />
+    <Compile Include="FireVehicleVerify.cs" />
     <Compile Include="_dump_turn90.cs" />
     <Compile Include="_dump_scurve.cs" />
     <Compile Include="_dump_rev_rigid.cs" />
@@ -55,6 +59,9 @@
     <Compile Include="..\TruckTurn\CarrierKinematics.cs" />
     <Compile Include="..\TruckTurn\CarrierPathPlanner.cs" />
     <Compile Include="..\TruckTurn\CarrierCadGeometry.cs" />
+    <Compile Include="..\TruckTurn\PlaybackRoute.cs" />
+    <Compile Include="..\TruckTurn\PlaybackRouteCodec.cs" />
+    <Compile Include="..\TruckTurn\FireVehicleCatalog.cs" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,841 @@
+{
+  "ReleaseVersion": "5.4.0",
+  "Date": "2026-11-04",
+  "ReleaseLabel": "Pre-release / compatibility validation",
+  "Platform": "Windows x64",
+  "CADHostExecuted": false,
+  "BuildSummary": {
+    "Groups": 12,
+    "Errors": 0,
+    "GroupsWithoutWarnings": 11,
+    "Warnings": [
+      {
+        "Platform": "GstarCAD/2026",
+        "Code": "MSB3277",
+        "Meaning": "Existing WindowsBase 4/8 compile reference conflict; host acceptance required"
+      }
+    ]
+  },
+  "Builds": [
+    {
+      "Platform": "GstarCAD/2025",
+      "Project": "src/GstarCAD/TruckTurn.GstarCAD2025/TruckTurn.GstarCAD2025.csproj",
+      "DLL": "dist/GstarCAD/2025/TruckTurn.GstarCAD2025.dll",
+      "Bytes": 246272,
+      "SHA256": "5C46400413DCE191B5988372685CF01D89CC68232FB3067F0F903AC31B940A00",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETFramework,Version=v4.8",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    },
+    {
+      "Platform": "GstarCAD/2026",
+      "Project": "src/GstarCAD/TruckTurn/TruckTurn.csproj",
+      "DLL": "dist/GstarCAD/2026/TruckTurn.dll",
+      "Bytes": 247296,
+      "SHA256": "57AF4CE3484C324AE70BB7E6DF5393F085778852824F2F76D70E62B11D339A7B",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETCoreApp,Version=v8.0",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": [
+        "MSB3277"
+      ]
+    },
+    {
+      "Platform": "AutoCAD/2018",
+      "Project": "src/AutoCAD/TruckTurn.AutoCAD2018.csproj",
+      "DLL": "dist/AutoCAD/2018/TruckTurn.AutoCAD2018.dll",
+      "Bytes": 246272,
+      "SHA256": "2CD5737D29E04890C52704E69EB868979441E34796C250F83B4275DB6A79D6FD",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETFramework,Version=v4.6",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    },
+    {
+      "Platform": "AutoCAD/2019-2020",
+      "Project": "src/AutoCAD/TruckTurn.AutoCAD2019_2020.csproj",
+      "DLL": "dist/AutoCAD/2019-2020/TruckTurn.AutoCAD2019_2020.dll",
+      "Bytes": 246272,
+      "SHA256": "4A4C666AD909FCC02ADB0BADD7929E05EB99ADCBBE37FEB72BC285B2159F6A9F",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETFramework,Version=v4.7",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    },
+    {
+      "Platform": "AutoCAD/2021-2024",
+      "Project": "src/AutoCAD/TruckTurn.AutoCAD2021_2024.csproj",
+      "DLL": "dist/AutoCAD/2021-2024/TruckTurn.AutoCAD2021_2024.dll",
+      "Bytes": 246272,
+      "SHA256": "1274A726BC1D3B8F1DF1389E5C6047265CD10CC044A265E0AE699365069D60C1",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETFramework,Version=v4.8",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    },
+    {
+      "Platform": "AutoCAD/2025-2026",
+      "Project": "src/AutoCAD/TruckTurn.AutoCAD2025_2026.csproj",
+      "DLL": "dist/AutoCAD/2025-2026/TruckTurn.AutoCAD2025_2026.dll",
+      "Bytes": 247296,
+      "SHA256": "81E18090DC8A632174EC7A47837AD69F80BBEA4C66C3B894835D44E569DAEE50",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETCoreApp,Version=v8.0",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    },
+    {
+      "Platform": "AutoCAD/2027",
+      "Project": "src/AutoCAD/TruckTurn.AutoCAD2027.csproj",
+      "DLL": "dist/AutoCAD/2027/TruckTurn.AutoCAD2027.dll",
+      "Bytes": 247808,
+      "SHA256": "8A37D62DA2EAEC9458293A31A9061E2494875F2ADD34C51E4F5DD97B8C55E599",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETCoreApp,Version=v10.0",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    },
+    {
+      "Platform": "ZWCAD/2022",
+      "Project": "src/ZWCAD/TruckTurn.ZWCAD2022.csproj",
+      "DLL": "dist/ZWCAD/2022/TruckTurn.ZWCAD2022.dll",
+      "Bytes": 245760,
+      "SHA256": "03B3585C01178B441BCBC0ABC3F8B8A401F769E97F4C0F1983C9EC2E35AD5FE9",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETFramework,Version=v4.7",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    },
+    {
+      "Platform": "ZWCAD/2023",
+      "Project": "src/ZWCAD/TruckTurn.ZWCAD2023.csproj",
+      "DLL": "dist/ZWCAD/2023/TruckTurn.ZWCAD2023.dll",
+      "Bytes": 245760,
+      "SHA256": "2F3FBAA444EBA894590BEA2695A4F0FD12236F0AA1637B2A74C0BF3303BE1727",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETFramework,Version=v4.7",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    },
+    {
+      "Platform": "ZWCAD/2024",
+      "Project": "src/ZWCAD/TruckTurn.ZWCAD2024.csproj",
+      "DLL": "dist/ZWCAD/2024/TruckTurn.ZWCAD2024.dll",
+      "Bytes": 245760,
+      "SHA256": "69A1802E17C0A28489F448A895EAE3B9B48343BA7524C533CCA84A3B62AEC6FA",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETFramework,Version=v4.7",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    },
+    {
+      "Platform": "ZWCAD/2025",
+      "Project": "src/ZWCAD/TruckTurn.ZWCAD2025.csproj",
+      "DLL": "dist/ZWCAD/2025/TruckTurn.ZWCAD2025.dll",
+      "Bytes": 245760,
+      "SHA256": "BAD370B82E3036B44DDA41DCDF26635481A87C8186024101ED96500E4A7FA55B",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETFramework,Version=v4.7",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    },
+    {
+      "Platform": "ZWCAD/2026",
+      "Project": "src/ZWCAD/TruckTurn.ZWCAD2026.csproj",
+      "DLL": "dist/ZWCAD/2026/TruckTurn.ZWCAD2026.dll",
+      "Bytes": 245760,
+      "SHA256": "DD2B16C36807C2F6B3B28972EE67983C530ED8F302F5427B29417D1EE8A0DAA7",
+      "AssemblyVersion": "5.4.0.0",
+      "FileVersion": "5.4.0.0",
+      "TargetFramework": ".NETFramework,Version=v4.7",
+      "Commands": [
+        "CARRIERDRIVE",
+        "CAR",
+        "TRUCKDRIVE",
+        "TRUCKTURN90",
+        "FIREDRIVE",
+        "FIRE",
+        "TTPLAY",
+        "TTSTOP"
+      ],
+      "NativeHostTested": false,
+      "WarningCodes": []
+    }
+  ],
+  "Binaries": [
+    {
+      "Path": "dist/AutoCAD/2018/System.ValueTuple.dll",
+      "Bytes": 78992,
+      "SHA256": "D6FB0DCFEE1490A8168117ED1B55758F11DB38475417B3668D19F89DCB55CBDD"
+    },
+    {
+      "Path": "dist/AutoCAD/2018/TruckTurn.AutoCAD2018.dll",
+      "Bytes": 246272,
+      "SHA256": "2CD5737D29E04890C52704E69EB868979441E34796C250F83B4275DB6A79D6FD"
+    },
+    {
+      "Path": "dist/AutoCAD/2019-2020/TruckTurn.AutoCAD2019_2020.dll",
+      "Bytes": 246272,
+      "SHA256": "4A4C666AD909FCC02ADB0BADD7929E05EB99ADCBBE37FEB72BC285B2159F6A9F"
+    },
+    {
+      "Path": "dist/AutoCAD/2021-2024/TruckTurn.AutoCAD2021_2024.dll",
+      "Bytes": 246272,
+      "SHA256": "1274A726BC1D3B8F1DF1389E5C6047265CD10CC044A265E0AE699365069D60C1"
+    },
+    {
+      "Path": "dist/AutoCAD/2025-2026/TruckTurn.AutoCAD2025_2026.deps.json",
+      "Bytes": 1751,
+      "SHA256": "335FAFC3394B2B75B3648DF8F3431879F8B6EE43D07DFC97D379A4A612560AC6"
+    },
+    {
+      "Path": "dist/AutoCAD/2025-2026/TruckTurn.AutoCAD2025_2026.dll",
+      "Bytes": 247296,
+      "SHA256": "81E18090DC8A632174EC7A47837AD69F80BBEA4C66C3B894835D44E569DAEE50"
+    },
+    {
+      "Path": "dist/AutoCAD/2027/TruckTurn.AutoCAD2027.deps.json",
+      "Bytes": 457,
+      "SHA256": "AC63B5AA558C58FE466F077B44D630E83AB3CCBE3DD0DEF1F6C35E99A4841990"
+    },
+    {
+      "Path": "dist/AutoCAD/2027/TruckTurn.AutoCAD2027.dll",
+      "Bytes": 247808,
+      "SHA256": "8A37D62DA2EAEC9458293A31A9061E2494875F2ADD34C51E4F5DD97B8C55E599"
+    },
+    {
+      "Path": "dist/GstarCAD/2025/TruckTurn.GstarCAD2025.dll",
+      "Bytes": 246272,
+      "SHA256": "5C46400413DCE191B5988372685CF01D89CC68232FB3067F0F903AC31B940A00"
+    },
+    {
+      "Path": "dist/GstarCAD/2026/TruckTurn.deps.json",
+      "Bytes": 419,
+      "SHA256": "BDD37D4CB41608909D86A97935566EB69DBF88F75CB2D2E6CA74E3540238E824"
+    },
+    {
+      "Path": "dist/GstarCAD/2026/TruckTurn.dll",
+      "Bytes": 247296,
+      "SHA256": "57AF4CE3484C324AE70BB7E6DF5393F085778852824F2F76D70E62B11D339A7B"
+    },
+    {
+      "Path": "dist/ZWCAD/2022/TruckTurn.ZWCAD2022.dll",
+      "Bytes": 245760,
+      "SHA256": "03B3585C01178B441BCBC0ABC3F8B8A401F769E97F4C0F1983C9EC2E35AD5FE9"
+    },
+    {
+      "Path": "dist/ZWCAD/2023/TruckTurn.ZWCAD2023.dll",
+      "Bytes": 245760,
+      "SHA256": "2F3FBAA444EBA894590BEA2695A4F0FD12236F0AA1637B2A74C0BF3303BE1727"
+    },
+    {
+      "Path": "dist/ZWCAD/2024/TruckTurn.ZWCAD2024.dll",
+      "Bytes": 245760,
+      "SHA256": "69A1802E17C0A28489F448A895EAE3B9B48343BA7524C533CCA84A3B62AEC6FA"
+    },
+    {
+      "Path": "dist/ZWCAD/2025/TruckTurn.ZWCAD2025.dll",
+      "Bytes": 245760,
+      "SHA256": "BAD370B82E3036B44DDA41DCDF26635481A87C8186024101ED96500E4A7FA55B"
+    },
+    {
+      "Path": "dist/ZWCAD/2026/TruckTurn.ZWCAD2026.dll",
+      "Bytes": 245760,
+      "SHA256": "DD2B16C36807C2F6B3B28972EE67983C530ED8F302F5427B29417D1EE8A0DAA7"
+    }
+  ],
+  "SourceInputs": [
+    {
+      "Path": "src/AutoCAD/Directory.Build.props",
+      "SHA256": "3110C5A29E6E6458904B60CBCAA9549D7A5C4AFEF1C031CBB6C9C1248EFCB04A"
+    },
+    {
+      "Path": "src/AutoCAD/TruckTurn.AutoCAD2018.csproj",
+      "SHA256": "458141013A8D4EE777AC455855D582450C6C96479EF52E017A8FCFE7E9660307"
+    },
+    {
+      "Path": "src/AutoCAD/TruckTurn.AutoCAD2019_2020.csproj",
+      "SHA256": "44BB04320ED063FD65175721CEF1C45051C921E58C25534FC00707A445553A92"
+    },
+    {
+      "Path": "src/AutoCAD/TruckTurn.AutoCAD2021_2024.csproj",
+      "SHA256": "B59FEEEC815ACBEF2F32B440419449E97F59228CC8DD73B7182C963322FA89E0"
+    },
+    {
+      "Path": "src/AutoCAD/TruckTurn.AutoCAD2025_2026.csproj",
+      "SHA256": "CA8459581D9F049815D468A510953FBD8468ACD9C71B430C31A4E7C962675BEC"
+    },
+    {
+      "Path": "src/AutoCAD/TruckTurn.AutoCAD2027.csproj",
+      "SHA256": "A14B1F34C1BED323B2F3A2642D777D12723920747F8A771A6B3750B266BE26AC"
+    },
+    {
+      "Path": "src/AutoCAD/src/CarrierCadGeometry.cs",
+      "SHA256": "8A35A847B7E3512DB3D809437AE45C473780BF16A81CB23824C568DFE9E2E9E9"
+    },
+    {
+      "Path": "src/AutoCAD/src/CarrierCommands.cs",
+      "SHA256": "7A6A6386BE82515A4AC067C3029AD4719644135D6B8FB2247B1BC9B9C150AADE"
+    },
+    {
+      "Path": "src/AutoCAD/src/CarrierJigs.cs",
+      "SHA256": "65477D8524B35812DE5C0526126B76B9284109A41DCE233BE52874EDF5240F9B"
+    },
+    {
+      "Path": "src/AutoCAD/src/CarrierKinematics.cs",
+      "SHA256": "33F747BD208DCF52E9E7700B8F9E6EF4D6D0E378DBF05A2EA2B94AFD35EE2C3C"
+    },
+    {
+      "Path": "src/AutoCAD/src/CarrierParams.cs",
+      "SHA256": "6E7B3A4F77081A8AFC69253DC33C40E0C272EEEA94C3D5416C055DDBEA860B9F"
+    },
+    {
+      "Path": "src/AutoCAD/src/CarrierPathPlanner.cs",
+      "SHA256": "3C1CC1E0A47664D57ACC564CB90CC10075F885C38C0A1657E5DD8977CB8F6953"
+    },
+    {
+      "Path": "src/AutoCAD/src/CarrierPose.cs",
+      "SHA256": "B48164D19DAAE7277C4176C08E2EB1343C700F4F76A2BBB5E0A3E8A8B38A420E"
+    },
+    {
+      "Path": "src/AutoCAD/src/CarrierSizeForm.cs",
+      "SHA256": "82BE4BB697AFC4155B7900B60913B99D70CFCB804C94322E4F336BF1957E749B"
+    },
+    {
+      "Path": "src/AutoCAD/src/Commands.cs",
+      "SHA256": "F285AF6B5E3382E6D3A185DE3B09C1ADD23B732185809AA59265E3185CE19C2A"
+    },
+    {
+      "Path": "src/AutoCAD/src/DrawingUtil.cs",
+      "SHA256": "D289655984AF15BB78838E512CFAEE811E021EFE68E9D6C3BDECA99F9C376F49"
+    },
+    {
+      "Path": "src/AutoCAD/src/FireCommands.cs",
+      "SHA256": "3BE67A7702BC7194088AD0C9BA6E8067E6AE39EB4408171B061A37432693C0F5"
+    },
+    {
+      "Path": "src/AutoCAD/src/FireTruckSizeForm.cs",
+      "SHA256": "AB1275A2DF45773ACC691C5FD2ECF839D6B80F1BDC230818AD9824F67E8A87A2"
+    },
+    {
+      "Path": "src/AutoCAD/src/FireVehicleCatalog.cs",
+      "SHA256": "269715F2B561A20A65BE3A40A14FCB6414411CEE00FB6666700BAF8A25528473"
+    },
+    {
+      "Path": "src/AutoCAD/src/FireVehicleSideView.cs",
+      "SHA256": "4BDE3A3210E11CE741C80D9921F174ACF7D029894BFFCA2EA4EA8C304140D3CA"
+    },
+    {
+      "Path": "src/AutoCAD/src/GeometryUtil.cs",
+      "SHA256": "C4602FB234B112D90E571ADDEC326D8703F4FE3179AB27D37A9E97604F13123B"
+    },
+    {
+      "Path": "src/AutoCAD/src/PlaybackCad.cs",
+      "SHA256": "B675DF0A687475479DE720A41ACAD8D8FEBE321BD29A1F2E26B6C75167A9B55C"
+    },
+    {
+      "Path": "src/AutoCAD/src/PlaybackDrawing.cs",
+      "SHA256": "97B3FDBDE3AAED051128B20E246C1B58F95CF74638F888BB69C8CA2BFC91B627"
+    },
+    {
+      "Path": "src/AutoCAD/src/PlaybackPlayerForm.cs",
+      "SHA256": "BD52E11DABD7AFEAAB38A4CF3C4B78BB523EDA94C086DB8005C6E954FB14EC6D"
+    },
+    {
+      "Path": "src/AutoCAD/src/PlaybackRoute.cs",
+      "SHA256": "F3AC29395A29AA130DD386F6EC6A52B8109D5B9F187CEFAAF5B3B7DD9B6B01C0"
+    },
+    {
+      "Path": "src/AutoCAD/src/PlaybackRouteCodec.cs",
+      "SHA256": "A12361774251D4CD2F04B85151521C9EA0D9F1059039A0695BC00C4B435031FB"
+    },
+    {
+      "Path": "src/AutoCAD/src/TruckJigs.cs",
+      "SHA256": "D3A6C0807FDBF59F5205E14239B7F6EF3A82A4A48C53B0B4D48C98B70C0F165D"
+    },
+    {
+      "Path": "src/AutoCAD/src/TruckKinematics.cs",
+      "SHA256": "2060933838FE2BE1B335F3BA4A1E53CC6DA58B56AE51A21BA521B6A2CD3BD5AA"
+    },
+    {
+      "Path": "src/AutoCAD/src/TruckSizeForm.cs",
+      "SHA256": "E59C148464555FC29729AA91F0F6C869BB530502998E36ADB4EADA74FBDCAB80"
+    },
+    {
+      "Path": "src/AutoCAD/src/VehicleParams.cs",
+      "SHA256": "719EF7881B887473673ED2EAF5C971CCE58F2A49D7E82A67952C133339488FD5"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/CarrierCadGeometry.cs",
+      "SHA256": "A08BB732CC2CD3ABED80166B5C5E5A7822A5BF03AD11DBAD3BC9094B72CD65EF"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/CarrierCommands.cs",
+      "SHA256": "63C0DFACF21DF0189519155C7842FF08EE426A5303A6086F515A0E41320FE8B9"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/CarrierJigs.cs",
+      "SHA256": "AD8A4189A3DFCEA4DA37FAA08DB5C6E085BCC3EB5177F3FD29777A395EA8DF5C"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/CarrierKinematics.cs",
+      "SHA256": "33F747BD208DCF52E9E7700B8F9E6EF4D6D0E378DBF05A2EA2B94AFD35EE2C3C"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/CarrierParams.cs",
+      "SHA256": "6E7B3A4F77081A8AFC69253DC33C40E0C272EEEA94C3D5416C055DDBEA860B9F"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/CarrierPathPlanner.cs",
+      "SHA256": "3C1CC1E0A47664D57ACC564CB90CC10075F885C38C0A1657E5DD8977CB8F6953"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/CarrierPose.cs",
+      "SHA256": "B48164D19DAAE7277C4176C08E2EB1343C700F4F76A2BBB5E0A3E8A8B38A420E"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/CarrierSizeForm.cs",
+      "SHA256": "82BE4BB697AFC4155B7900B60913B99D70CFCB804C94322E4F336BF1957E749B"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/Commands.cs",
+      "SHA256": "1D428CA708E4BD1CC43962A970FA9CA4056F823C2566A40EEC7628000425BA7F"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/DrawingUtil.cs",
+      "SHA256": "9DF3D5B9B0587744DC6AA33778E50D8A2125082A74A3BA6A3B024E53F763CC38"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/FireCommands.cs",
+      "SHA256": "15FD8B1D86496146D6DC67413AD1EC73C103A64ACA30A43A122724C1873EAB68"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/FireTruckSizeForm.cs",
+      "SHA256": "AB1275A2DF45773ACC691C5FD2ECF839D6B80F1BDC230818AD9824F67E8A87A2"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/FireVehicleCatalog.cs",
+      "SHA256": "269715F2B561A20A65BE3A40A14FCB6414411CEE00FB6666700BAF8A25528473"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/FireVehicleSideView.cs",
+      "SHA256": "4BDE3A3210E11CE741C80D9921F174ACF7D029894BFFCA2EA4EA8C304140D3CA"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/GeometryUtil.cs",
+      "SHA256": "8AA934C40AC87D5280F996985A7D96B756D399E3334113B936FFF4DCF647613F"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/PlaybackCad.cs",
+      "SHA256": "6D1F61C8D685EDA406143216535D8AC906F95EDF9AB1E2EF9D926053CA99290C"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/PlaybackDrawing.cs",
+      "SHA256": "AF03F2BF044C48E3169452FCC119360E06EF03B07BBD5B51479E8FD59079A524"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/PlaybackPlayerForm.cs",
+      "SHA256": "BD52E11DABD7AFEAAB38A4CF3C4B78BB523EDA94C086DB8005C6E954FB14EC6D"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/PlaybackRoute.cs",
+      "SHA256": "F3AC29395A29AA130DD386F6EC6A52B8109D5B9F187CEFAAF5B3B7DD9B6B01C0"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/PlaybackRouteCodec.cs",
+      "SHA256": "A12361774251D4CD2F04B85151521C9EA0D9F1059039A0695BC00C4B435031FB"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/TruckJigs.cs",
+      "SHA256": "5D81372231596C65EEC948A2DEFFE08D9B5D6A11B2FA638396B390ACF9EAEAFD"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/TruckKinematics.cs",
+      "SHA256": "2D391B1B5C72BBE989B0BE72B8C099FDC737255CAEA24BB2B6CD502A07B591EC"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/TruckSizeForm.cs",
+      "SHA256": "E59C148464555FC29729AA91F0F6C869BB530502998E36ADB4EADA74FBDCAB80"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/TruckTurn.csproj",
+      "SHA256": "EA967EE9D01CFFAC03A6007F4AD1C94F18773F8DEFDC61EE3399CA88DFF79EA8"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn/VehicleParams.cs",
+      "SHA256": "719EF7881B887473673ED2EAF5C971CCE58F2A49D7E82A67952C133339488FD5"
+    },
+    {
+      "Path": "src/GstarCAD/TruckTurn.GstarCAD2025/TruckTurn.GstarCAD2025.csproj",
+      "SHA256": "7B3E59EC26F869B6390EF0E481E080F99ABD143CBAADCD6A5FFB77FCAAAC4880"
+    },
+    {
+      "Path": "src/ZWCAD/Build-ZWCAD.ps1",
+      "SHA256": "1956C8E8E5C5C5FE980984D3439B366329BDC38915E3E9BC43C0551920ED2F59"
+    },
+    {
+      "Path": "src/ZWCAD/Directory.Build.props",
+      "SHA256": "76510FBA64D4A2D73CC7B6C8D838E543EDDE58726282A63590947F44E3F091CA"
+    },
+    {
+      "Path": "src/ZWCAD/Directory.Build.targets",
+      "SHA256": "2AB082983A37E8569E19D2560554E5B67A2A70E25BCBC0C00138AC36E12E9CF5"
+    },
+    {
+      "Path": "src/ZWCAD/TruckTurn.ZWCAD2022.csproj",
+      "SHA256": "2651637E03E2125D293D5BBBECC88CA8098EFD6275838D477C45FD637DBF98CC"
+    },
+    {
+      "Path": "src/ZWCAD/TruckTurn.ZWCAD2023.csproj",
+      "SHA256": "E7A00E781C5B84B585407CCE2213BB2E4D0B43B8332E74919EC3BCEB840C6D91"
+    },
+    {
+      "Path": "src/ZWCAD/TruckTurn.ZWCAD2024.csproj",
+      "SHA256": "C404922B4B0B1C02D96DC99F09567FF396F839B2EBF58346661C17AC90A18ECB"
+    },
+    {
+      "Path": "src/ZWCAD/TruckTurn.ZWCAD2025.csproj",
+      "SHA256": "1B2F6E214C89D76B74E43D5C835AA43CBCAB0087E0E926778EBD0951352D05C3"
+    },
+    {
+      "Path": "src/ZWCAD/TruckTurn.ZWCAD2026.csproj",
+      "SHA256": "61D73DD7BC6975F14AF84603890D2EEF0FD234854EA2A974D37E9019ED7EB8C5"
+    },
+    {
+      "Path": "src/ZWCAD/src/CarrierCadGeometry.cs",
+      "SHA256": "BDFD88F62BACCEE7E7D2F6702BEC95B6366D4F0AA8AD64EDC4CF1D6FA02C115C"
+    },
+    {
+      "Path": "src/ZWCAD/src/CarrierCommands.cs",
+      "SHA256": "5E7B84625701941B63FCEF56A50A28FF381CF4C901AC83A562EBC5D710C8BB63"
+    },
+    {
+      "Path": "src/ZWCAD/src/CarrierJigs.cs",
+      "SHA256": "CB7660470EC51BD71F1FA9A7988CE48DB02F284ADF4BC5587437DBE312BC9E0B"
+    },
+    {
+      "Path": "src/ZWCAD/src/CarrierKinematics.cs",
+      "SHA256": "33F747BD208DCF52E9E7700B8F9E6EF4D6D0E378DBF05A2EA2B94AFD35EE2C3C"
+    },
+    {
+      "Path": "src/ZWCAD/src/CarrierParams.cs",
+      "SHA256": "6E7B3A4F77081A8AFC69253DC33C40E0C272EEEA94C3D5416C055DDBEA860B9F"
+    },
+    {
+      "Path": "src/ZWCAD/src/CarrierPathPlanner.cs",
+      "SHA256": "3C1CC1E0A47664D57ACC564CB90CC10075F885C38C0A1657E5DD8977CB8F6953"
+    },
+    {
+      "Path": "src/ZWCAD/src/CarrierPose.cs",
+      "SHA256": "B48164D19DAAE7277C4176C08E2EB1343C700F4F76A2BBB5E0A3E8A8B38A420E"
+    },
+    {
+      "Path": "src/ZWCAD/src/CarrierSizeForm.cs",
+      "SHA256": "82BE4BB697AFC4155B7900B60913B99D70CFCB804C94322E4F336BF1957E749B"
+    },
+    {
+      "Path": "src/ZWCAD/src/Commands.cs",
+      "SHA256": "35359997266675A91E5D52FD5F38C290540162B94916455E3BFCD3B81E579214"
+    },
+    {
+      "Path": "src/ZWCAD/src/DrawingUtil.cs",
+      "SHA256": "39941256C933E91CB67839667A784C062A099706AECD1DBDBF65C50B8AB70956"
+    },
+    {
+      "Path": "src/ZWCAD/src/FireCommands.cs",
+      "SHA256": "4F4BF843F52BA34F361A93EF8746B215B0ED784C70FF9F84F991A88342A20457"
+    },
+    {
+      "Path": "src/ZWCAD/src/FireTruckSizeForm.cs",
+      "SHA256": "AB1275A2DF45773ACC691C5FD2ECF839D6B80F1BDC230818AD9824F67E8A87A2"
+    },
+    {
+      "Path": "src/ZWCAD/src/FireVehicleCatalog.cs",
+      "SHA256": "269715F2B561A20A65BE3A40A14FCB6414411CEE00FB6666700BAF8A25528473"
+    },
+    {
+      "Path": "src/ZWCAD/src/FireVehicleSideView.cs",
+      "SHA256": "4BDE3A3210E11CE741C80D9921F174ACF7D029894BFFCA2EA4EA8C304140D3CA"
+    },
+    {
+      "Path": "src/ZWCAD/src/GeometryUtil.cs",
+      "SHA256": "D5C798327FF29585E94F03F5091C5E99EF46F89A8E018916210B2CCF9358C73E"
+    },
+    {
+      "Path": "src/ZWCAD/src/PlaybackCad.cs",
+      "SHA256": "761F56525DA1E78FC0F50488AF3BA11DD5B5A0FD0B07C61165D212EDCC1B01A1"
+    },
+    {
+      "Path": "src/ZWCAD/src/PlaybackDrawing.cs",
+      "SHA256": "43AD5705511563B30BD0E26E6CD022F1A910C55DB0D518315FDE16377AD469F6"
+    },
+    {
+      "Path": "src/ZWCAD/src/PlaybackPlayerForm.cs",
+      "SHA256": "BD52E11DABD7AFEAAB38A4CF3C4B78BB523EDA94C086DB8005C6E954FB14EC6D"
+    },
+    {
+      "Path": "src/ZWCAD/src/PlaybackRoute.cs",
+      "SHA256": "F3AC29395A29AA130DD386F6EC6A52B8109D5B9F187CEFAAF5B3B7DD9B6B01C0"
+    },
+    {
+      "Path": "src/ZWCAD/src/PlaybackRouteCodec.cs",
+      "SHA256": "A12361774251D4CD2F04B85151521C9EA0D9F1059039A0695BC00C4B435031FB"
+    },
+    {
+      "Path": "src/ZWCAD/src/TruckJigs.cs",
+      "SHA256": "02CF5A961B277FB17D110C9D4F8E284C6C4A8270AC6A7C8DBF6E7DCC17619D3A"
+    },
+    {
+      "Path": "src/ZWCAD/src/TruckKinematics.cs",
+      "SHA256": "1311C3CBFE799F320109BA0AA26DBEF8C2B6F8897790157066C2E32D1FBE961E"
+    },
+    {
+      "Path": "src/ZWCAD/src/TruckSizeForm.cs",
+      "SHA256": "E59C148464555FC29729AA91F0F6C869BB530502998E36ADB4EADA74FBDCAB80"
+    },
+    {
+      "Path": "src/ZWCAD/src/VehicleParams.cs",
+      "SHA256": "719EF7881B887473673ED2EAF5C971CCE58F2A49D7E82A67952C133339488FD5"
+    }
+  ],
+  "RegressionEvidence": {
+    "CoreFilesUnchanged": 72,
+    "CoreBaselineMatches": true,
+    "ExplicitAssertionsInSourceLinkedSuites": 196002,
+    "FinalMetadataAssertions": 306,
+    "TestsUseCADShimsAndOffscreenForms": true,
+    "NativeHostAcceptance": false
+  },
+  "CompileTimeVendorReferences": [
+    {
+      "Platform": "GstarCAD/lib",
+      "Name": "GcMgd.dll",
+      "SHA256": "7E442F433FEC0FCAD9BEF8C3170AD741F184A5C54DEA460F16066DAB16369CDC",
+      "Redistributed": false
+    },
+    {
+      "Platform": "GstarCAD/lib",
+      "Name": "GcDbMgd.dll",
+      "SHA256": "393F89A0BC9EAB4D5159DFD169444B9804D4BB54E06BCD6B1462171185F6D402",
+      "Redistributed": false
+    },
+    {
+      "Platform": "GstarCAD/lib",
+      "Name": "GcCoreMgd.dll",
+      "SHA256": "A3C2CBDC4569F019A42DFF0EC90734BEC1513DCA04E5ACAFA610FFA4B06AA49E",
+      "Redistributed": false
+    },
+    {
+      "Platform": "GstarCAD/lib2025",
+      "Name": "GcMgd.dll",
+      "SHA256": "EF50EB29EA2FDD820BE301F31C2116C1BC9778637EDFA8A03CFE9ED6137FB616",
+      "Redistributed": false
+    },
+    {
+      "Platform": "GstarCAD/lib2025",
+      "Name": "GcDbMgd.dll",
+      "SHA256": "2855E8D4715CF609B897890168F04EC6A0C1DF06D6424C082DAFD851314904AC",
+      "Redistributed": false
+    },
+    {
+      "Platform": "GstarCAD/lib2025",
+      "Name": "GcCoreMgd.dll",
+      "SHA256": "8752C913807DE1F0217028B244E4A86D81FD8949497E47EA9A3DA089BEBAFA85",
+      "Redistributed": false
+    },
+    {
+      "Platform": "ZWCAD/2022",
+      "Name": "ZwManaged.dll",
+      "Version": "22.20.22.20",
+      "SHA256": "18210F56C57A72C278E5E3153D05B140F1C841BAFCCE47D0EC4E88DFDE095857",
+      "Redistributed": false
+    },
+    {
+      "Platform": "ZWCAD/2022",
+      "Name": "ZwDatabaseMgd.dll",
+      "Version": "22.20.22.20",
+      "SHA256": "9C048E094D50FD403535AD9D77284B5D1837D3A85A2881549FDC39B73EC544C5",
+      "Redistributed": false
+    },
+    {
+      "Platform": "ZWCAD/2023",
+      "Name": "ZwManaged.dll",
+      "Version": "23.20.23.20",
+      "SHA256": "BFA5E40016A8686847892BE362516EE70367E91C8FCBA8C2DC9D7D9309B6169D",
+      "Redistributed": false
+    },
+    {
+      "Platform": "ZWCAD/2023",
+      "Name": "ZwDatabaseMgd.dll",
+      "Version": "23.20.23.20",
+      "SHA256": "F6BEDA685146802AF26EFDC57CA62F918CD4AA5C4AE9AF6C3A80E8987535A1A6",
+      "Redistributed": false
+    },
+    {
+      "Platform": "ZWCAD/2024",
+      "Name": "ZwManaged.dll",
+      "Version": "24.0.24.0",
+      "SHA256": "37C3DA60054AFBD33C93CD66C6AB61D599ED7999EC5AA79A0A092CEF046E44CC",
+      "Redistributed": false
+    },
+    {
+      "Platform": "ZWCAD/2024",
+      "Name": "ZwDatabaseMgd.dll",
+      "Version": "24.0.24.0",
+      "SHA256": "AB78259274DB4EFBF89AEAB5153233A33F5C94A4BB130177E04293C04781A43D",
+      "Redistributed": false
+    },
+    {
+      "Platform": "ZWCAD/2025",
+      "Name": "ZwManaged.dll",
+      "Version": "25.0.25.0",
+      "SHA256": "6801D5F12D1EC7998FAA013B43AA8F63B42768A12B36B63FB8CA4C347002CAFF",
+      "Redistributed": false
+    },
+    {
+      "Platform": "ZWCAD/2025",
+      "Name": "ZwDatabaseMgd.dll",
+      "Version": "25.0.25.0",
+      "SHA256": "7489DD1D9F0FE3F71309623B92F09C6370E1ED8D96BB05380AE3BB87DBF307D3",
+      "Redistributed": false
+    },
+    {
+      "Platform": "ZWCAD/2026",
+      "Name": "ZwManaged.dll",
+      "Version": "26.0.26.0",
+      "SHA256": "366243BE750A961772EF2F9135D7258B6C21A91D4CDDFE37D8AF270AFE40BBDB",
+      "Redistributed": false
+    },
+    {
+      "Platform": "ZWCAD/2026",
+      "Name": "ZwDatabaseMgd.dll",
+      "Version": "26.0.26.0",
+      "SHA256": "69CBC929B1F73A91FBFF6DD305BE5A32442D00211BA916AD99A0F3536A7CA226",
+      "Redistributed": false
+    }
+  ],
+  "ZWCADReferenceOrigin": "Third-party ZWCAD.NetApi 20.22.0–20.26.0 packaging by InspireFunction; original ZWSOFT-signed API DLLs verified as compile-only references. No SDK DLLs redistributed. Not an official vendor NuGet publication.",
+  "Rights": "No new open-source license. System.ValueTuple is separately distributed under its supplied license and notices."
+}

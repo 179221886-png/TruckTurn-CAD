@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Globalization;
 using System.Windows.Forms;
 
 namespace TruckTurn
@@ -24,6 +25,8 @@ namespace TruckTurn
         private TextBox txtAxles;        // 轴数
         private TextBox txtSteer;        // 前轮最大转角(°)
         private Label lblTractorLen;
+        private Label lblMainLen;
+        private Label lblAxles;
         private Label lblHint;
         private Button btnOk;
         private Button btnCancel;
@@ -49,6 +52,10 @@ namespace TruckTurn
 
         /// <summary>v4.6.1：由 INSUNITS 探测到的本图「1 米 = ? 图形单位」。0 = 探测不到，不给提示。</summary>
         private readonly double _drawingUnitScale;
+        private readonly VehicleParams _originalMeters;
+        private bool _forceRebuild;
+
+        private static string Precise(double value) { return value.ToString("R", CultureInfo.InvariantCulture); }
 
         // 车型预设（内部单位米，显示时乘以 UnitScale 换算）。Articulated=false 为刚性单车。
         private class Preset
@@ -81,24 +88,29 @@ namespace TruckTurn
         {
             current = current ?? VehicleParams.Defaults();
             _drawingUnitScale = drawingUnitScale;
+            _originalMeters = current.InUnitScale(1.0);
+            // 旧参数 CabRearX 可能已作自动安全退让。开窗显示并保存实际有效值，不能把旧实体缩回原始无效输入。
+            if (_originalMeters.Articulated)
+                _originalMeters.KingpinToCabRear = _originalMeters.CabRearX() - _originalMeters.TractorRearToKingpin;
+            _originalMeters.ExplicitCabGeometry = true;
             InitializeComponent();
 
             // 用当前/默认参数回填各输入框
             chkArticulated.Checked = current.Articulated;
             SetUnitByScale(current.UnitScale);
-            txtTractorLen.Text = current.TractorLengthMeters().ToString("F1");
+            txtTractorLen.Text = Precise(_originalMeters.TractorLengthMeters());
             // v4.6.1：铰接时「主车长」= 挂车长，必须用 TrailerLengthMeters()。
             // 之前误用 LengthMeters()（列车总长），每次开窗挂车就被多加一次牵引车长，
             // 参数在反复打开选型窗的过程中不断膨胀。
-            txtMainLen.Text = (current.Articulated
-                ? current.TrailerLengthMeters()
-                : current.LengthMeters()).ToString("F1");
-            txtWidth.Text = current.WidthMeters().ToString("F2");
+            txtMainLen.Text = Precise(current.Articulated
+                ? _originalMeters.TrailerLengthMeters()
+                : _originalMeters.LengthMeters());
+            txtWidth.Text = Precise(_originalMeters.WidthMeters());
             txtAxles.Text = current.AxleCount().ToString();
-            txtSteer.Text = current.SteerAngleDeg.ToString("F0");
-            txtKingpinToCabRear.Text = (current.KingpinToCabRear / current.UnitScale).ToString("F2");
-            txtTrailerKingpinToFront.Text = (current.TrailerKingpinToFront / current.UnitScale).ToString("F2");
-            txtMaxArticulation.Text = current.MaxArticulationAngleDeg.ToString("F0");
+            txtSteer.Text = Precise(current.SteerAngleDeg);
+            txtKingpinToCabRear.Text = Precise(_originalMeters.KingpinToCabRear);
+            txtTrailerKingpinToFront.Text = Precise(_originalMeters.TrailerKingpinToFront);
+            txtMaxArticulation.Text = Precise(current.MaxArticulationAngleDeg);
             chkShowEnvelope.Checked = current.ShowEnvelope;
             chkShowBody.Checked = current.ShowBody;
             chkShowWheels.Checked = current.ShowWheels;
@@ -196,21 +208,25 @@ namespace TruckTurn
             this.Controls.Add(chkArticulated);
 
             y = 150;
-            lblTractorLen = new Label { Text = "牵引车长(m)：", AutoSize = true, Left = x, Top = y + 2 };
+            lblTractorLen = new Label { Text = "牵引车全长(m)：", AutoSize = true, Left = x, Top = y + 2 };
             txtTractorLen = new TextBox { Left = tbX, Top = y, Width = tbW, Height = lh };
             txtTractorLen.TextChanged += (s, e) => { cboPreset.SelectedIndex = 0; UpdateHint(); RedrawPreview(); };
             this.Controls.Add(lblTractorLen); this.Controls.Add(txtTractorLen);
 
             y += gap;
-            AddRow("主车长(m)：", ref txtMainLen, y);
+            lblMainLen = new Label { Text = "挂车全长(m)：", AutoSize = true, Left = x, Top = y + 2 };
+            txtMainLen = new TextBox { Left = tbX, Top = y, Width = tbW, Height = lh };
+            this.Controls.Add(lblMainLen); this.Controls.Add(txtMainLen);
             txtMainLen.TextChanged += (s, e) => { cboPreset.SelectedIndex = 0; UpdateHint(); RedrawPreview(); };
 
             y += gap;
-            AddRow("车宽(m)：", ref txtWidth, y);
+            AddRow("最大外宽(含突出物,m)：", ref txtWidth, y);
             txtWidth.TextChanged += (s, e) => { cboPreset.SelectedIndex = 0; UpdateHint(); RedrawPreview(); };
 
             y += gap;
-            AddRow("轴数：", ref txtAxles, y);
+            lblAxles = new Label { Text = "挂车轴数：", AutoSize = true, Left = x, Top = y + 2 };
+            txtAxles = new TextBox { Left = tbX, Top = y, Width = tbW, Height = lh };
+            this.Controls.Add(lblAxles); this.Controls.Add(txtAxles);
             txtAxles.TextChanged += (s, e) => { cboPreset.SelectedIndex = 0; UpdateHint(); RedrawPreview(); };
 
             y += gap;
@@ -280,6 +296,12 @@ namespace TruckTurn
             grpLayers.Controls.Add(lblNodeVehicleDisplay);
             grpLayers.Controls.Add(cboNodeVehicleDisplay);
             this.Controls.Add(grpLayers);
+            var tips = new ToolTip { AutoPopDelay = 15000 };
+            tips.SetToolTip(txtTractorLen, "整台牵引车前端至底盘尾端的全长，包含驾驶室和后部车架；不是仅驾驶室长度。");
+            tips.SetToolTip(txtMainLen, "半挂：挂车真实前端至车尾全长（含鞍座前方部分）；刚性车：整车前端至车尾全长。");
+            tips.SetToolTip(txtWidth, "本版统一为包含固定突出物与允许转角内轮胎的最大外宽；轮距等通用估算值不代表厂家认证。");
+            tips.SetToolTip(txtAxles, "多轴外观及轮迹按1.35m轴间距示意，转弯运动学仍按等效前后轴计算。");
+            this.Disposed += (s, e) => tips.Dispose();
         }
 
         private void AddLayerCheck(GroupBox grp, ref CheckBox chk, string text, int lx, int ly)
@@ -300,7 +322,9 @@ namespace TruckTurn
             bool art = chkArticulated.Checked;
             lblTractorLen.Enabled = art;
             txtTractorLen.Enabled = art;
-            lblTractorLen.Text = art ? "牵引车长(m)：" : "整车长(m)：";
+            lblTractorLen.Text = "牵引车全长(m)：";
+            lblMainLen.Text = art ? "挂车全长(m)：" : "整车全长(m)：";
+            lblAxles.Text = art ? "挂车轴数：" : "整车轴数：";
             txtTrailerKingpinToFront.Enabled = art;
             txtKingpinToCabRear.Enabled = art;
             txtMaxArticulation.Enabled = art;
@@ -311,6 +335,7 @@ namespace TruckTurn
             if (cboPreset.SelectedIndex <= 0) return; // 自定义
             var name = cboPreset.Text;
             if (!Presets.TryGetValue(name, out var ps)) return;
+            _forceRebuild = true;
             chkArticulated.Checked = ps.Articulated;
             txtTractorLen.Text = ps.TractorLenM.ToString("F1");
             txtMainLen.Text = ps.MainLenM.ToString("F1");
@@ -318,8 +343,12 @@ namespace TruckTurn
             txtAxles.Text = ps.Axles.ToString();
             txtSteer.Text = ps.SteerDeg.ToString("F0");
             // v4.4 预设默认 kingpin 间隙与最大铰接角
-            txtKingpinToCabRear.Text = (ps.Articulated ? 0.21 * ps.TractorLenM : 0.0).ToString("F2");
-            txtTrailerKingpinToFront.Text = (ps.Articulated ? 0.03 * ps.MainLenM : 0.0).ToString("F2");
+            var coupling = new VehicleParams { UnitScale = 1, TrailerWidth = ps.WidthM,
+                TrailerKingpinToFront = ps.Articulated ? 0.03 * ps.MainLenM : 0,
+                CabClearance = 0.1, MaxArticulationAngleDeg = 90 };
+            txtKingpinToCabRear.Text = Precise(ps.Articulated
+                ? Math.Max(0.21 * ps.TractorLenM, coupling.SafeCabGap()) : 0.0);
+            txtTrailerKingpinToFront.Text = Precise(coupling.TrailerKingpinToFront);
             txtMaxArticulation.Text = "90";
             SyncArticulatedUI();
             UpdateHint();
@@ -335,9 +364,10 @@ namespace TruckTurn
 
             if (chkArticulated.Checked)
             {
-                if (!double.TryParse(txtTractorLen.Text, out double tM)) tM = 0;
-                if (!double.TryParse(txtMainLen.Text, out double trM)) trM = 0;
-                if ((tM + trM) > 17.1) msgs.Add("铰接列车总长超过 17.1m 限值");
+                VehicleParams p;
+                string ignored;
+                if (TryBuildParameters(out p, out ignored) && p.LengthMeters() > 17.1)
+                    msgs.Add("铰接列车总长超过 17.1m 常见限值");
             }
             else
             {
@@ -345,65 +375,126 @@ namespace TruckTurn
                 if (lM > 12.0) msgs.Add("单车长超过 12m 限值");
             }
 
-            if (msgs.Count == 0) { lblHint.Text = "符合 GB1589-2016 常见限值，可放心使用。"; lblHint.ForeColor = Color.FromArgb(0, 120, 0); }
+            if (msgs.Count == 0) { lblHint.Text = "通用参考：轴距/前后悬及预设耦合净距为估算；多轴按等效两轴运动学，轴组间距1.35m仅示意。尺寸提示不等于实车认证。"; lblHint.ForeColor = Color.FromArgb(90, 100, 110); }
             else { lblHint.Text = "提示：" + string.Join("；", msgs) + "。仍可继续（仅提示）。"; lblHint.ForeColor = Color.FromArgb(180, 90, 0); }
         }
 
         /// <summary>v4.9.22：根据当前界面输入构造一个仅用于预览的 VehicleParams（UnitScale=1，单位米）。</summary>
         private VehicleParams BuildPreviewParams()
         {
-            var p = new VehicleParams { UnitScale = 1.0 };
-            p.Articulated = chkArticulated.Checked;
-            p.SteerAngleDeg = ParseD(txtSteer.Text, 18);
-            p.TurnAngleDeg = 90;
-            p.MaxArticulationAngleDeg = Math.Max(10.0, ParseD(txtMaxArticulation.Text, 90.0));
+            VehicleParams p;
+            string error;
+            return TryBuildParameters(out p, out error) ? p.InUnitScale(1.0) : null;
+        }
 
-            double wM = ParseD(txtWidth.Text, 2.5);
-            double trackM = Math.Max(0.9, wM * 0.75);
-            p.WheelTrack = trackM;
-            p.TractorWidth = wM;
-            p.TrailerWidth = wM;
+        /// <summary>与确认按钮共用的无弹窗构造入口，便于自动验证输入、预览和实体的一致性。</summary>
+        public bool TryBuildParameters(out VehicleParams result, out string error)
+        {
+            result = null;
+            error = null;
+            bool art = chkArticulated.Checked;
+            double width, mainLength, tractorLength = 0, steer, gap = 0, front = 0, articulation = 0;
+            int axles;
+            if (!ReadFinite(txtWidth, "最大外宽", out width, out error) ||
+                !ReadFinite(txtMainLen, art ? "挂车全长" : "整车全长", out mainLength, out error) ||
+                !ReadFinite(txtSteer, "前轮最大转角", out steer, out error)) return false;
+            if (!int.TryParse(txtAxles.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out axles))
+            { error = "轴数必须是整数。"; return false; }
+            if (width <= 0 || mainLength <= 0) { error = "车宽、车长必须大于0。"; return false; }
+            if (art && (!ReadFinite(txtTractorLen, "牵引车全长", out tractorLength, out error) ||
+                !ReadFinite(txtKingpinToCabRear, "驾驶室后壁到鞍座", out gap, out error) ||
+                !ReadFinite(txtTrailerKingpinToFront, "挂车前端到鞍座", out front, out error) ||
+                !ReadFinite(txtMaxArticulation, "最大铰接角", out articulation, out error))) return false;
 
-            if (p.Articulated)
+            bool rebuild = _forceRebuild || art != _originalMeters.Articulated;
+            VehicleParams p = rebuild ? new VehicleParams { UnitScale = 1.0 } : _originalMeters.Copy();
+            p.Articulated = art;
+            bool widthChanged = rebuild || !Same(width, _originalMeters.WidthMeters());
+            if (widthChanged)
             {
-                double tractorM = ParseD(txtTractorLen.Text, 6.0);
-                double trailerM = ParseD(txtMainLen.Text, 11.0);
-                double kpCabRearM = Math.Max(0.0, ParseD(txtKingpinToCabRear.Text, 0.21 * tractorM));
-                double kpTrailerFrontM = Math.Max(0.0, ParseD(txtTrailerKingpinToFront.Text, 0.03 * trailerM));
-                p.KingpinToCabRear = kpCabRearM;
-                p.TrailerKingpinToFront = kpTrailerFrontM;
-                p.ChassisWidth = Math.Min(wM, 1.0);
-                p.CabClearance = 0.1;
-                p.ChassisRearOverhang = 0.15 * tractorM;
-                p.TractorFrontOverhang = 0.25 * tractorM;
-                p.TractorWheelbase = 0.60 * tractorM;
-                p.TractorRearToKingpin = 0.10 * tractorM;
-                double tre = 0.12 * trailerM;
-                p.TrailerRearOverhang = tre;
-                p.TrailerKingpinToRearAxle = Math.Max(1.0, trailerM - tre - p.TrailerKingpinToFront);
-                p.TrailerAxles = (int)Math.Max(1, Math.Min(3, ParseD(txtAxles.Text, 3)));
+                p.TractorWidth = p.TrailerWidth = width;
+                p.ChassisWidth = Math.Min(1.0, width);
+            }
+            p.BodyWidthIncludesMirrors = true;
+            p.ExplicitCabGeometry = true;
+            p.SteerAngleDeg = steer;
+            if (rebuild) p.TurnAngleDeg = 90;
+            if (widthChanged || rebuild)
+            {
+                // 轮距是通用模板估算值，包含满舵胎宽并留每侧1cm余量；旧独立轮距不静默修改。
+                double halfLength, halfWidth;
+                VehicleParams.WheelExtentsMeters(steer, out halfLength, out halfWidth);
+                p.WheelTrack = Math.Min(0.75 * width, width - 2.0 * halfWidth - 0.02);
+            }
+
+            if (art)
+            {
+                if (tractorLength <= 0) { error = "牵引车全长必须大于0。"; return false; }
+                if (rebuild || !Same(tractorLength, _originalMeters.TractorLengthMeters()))
+                {
+                    p.TractorFrontOverhang = 0.25 * tractorLength;
+                    p.TractorWheelbase = 0.60 * tractorLength;
+                    p.ChassisRearOverhang = 0.15 * tractorLength;
+                    p.TractorRearToKingpin = 0.10 * tractorLength;
+                }
+                p.KingpinToCabRear = gap;
+                p.TrailerKingpinToFront = front;
+                p.MaxArticulationAngleDeg = articulation;
+                if (rebuild) { p.CabClearance = 0.10; p.ChassisWidth = Math.Min(1.0, width); }
+                if (rebuild || !Same(mainLength, _originalMeters.TrailerLengthMeters()))
+                    p.TrailerRearOverhang = 0.12 * mainLength;
+                // 仅改变鞍座前端距离时保留总长和原后悬；不能再用隐藏的1m下限改变总长。
+                if (rebuild || !Same(mainLength, _originalMeters.TrailerLengthMeters()) ||
+                    !Same(front, _originalMeters.TrailerKingpinToFront))
+                    p.TrailerKingpinToRearAxle = mainLength - p.TrailerRearOverhang - front;
+                p.TrailerAxles = axles;
                 p.RigidRearOverhang = 0;
                 p.RigidAxles = 2;
             }
             else
             {
-                double totalM = ParseD(txtMainLen.Text, 8.0);
-                RigidLayoutM(totalM, out double foM, out double wbM, out double roM);
-                p.TractorFrontOverhang = foM;
-                p.TractorWheelbase = wbM;
-                p.TractorRearToKingpin = 0;
-                p.RigidRearOverhang = roM;
-                p.RigidAxles = (int)Math.Max(2, Math.Min(6, ParseD(txtAxles.Text, 2)));
-                p.TrailerKingpinToRearAxle = 0;
-                p.TrailerRearOverhang = 0;
-                p.TrailerAxles = 3;
-                p.KingpinToCabRear = 0;
-                p.TrailerKingpinToFront = 0;
-                p.ChassisRearOverhang = 0;
-                p.ChassisWidth = wM;
-                p.CabClearance = 0;
+                if (rebuild || !Same(mainLength, _originalMeters.LengthMeters()))
+                {
+                    double fo, wb, ro;
+                    RigidLayoutM(mainLength, out fo, out wb, out ro);
+                    if (wb < 1.2)
+                    { error = "整车过短：当前通用布局要求前悬+后悬+至少1.2m轴距，总长至少3.1m；不会自动加长。"; return false; }
+                    p.TractorFrontOverhang = fo;
+                    p.TractorWheelbase = wb;
+                    p.RigidRearOverhang = ro;
+                }
+                p.RigidAxles = axles;
+                if (rebuild)
+                {
+                    p.TractorRearToKingpin = p.TrailerKingpinToRearAxle = p.TrailerRearOverhang = 0;
+                    p.TrailerKingpinToFront = p.KingpinToCabRear = p.ChassisRearOverhang = p.CabClearance = 0;
+                    p.TrailerWidth = width; p.TrailerAxles = 1;
+                    p.ChassisWidth = width;
+                }
             }
-            return p;
+            p.ShowEnvelope = chkShowEnvelope.Checked; p.ShowBody = chkShowBody.Checked;
+            p.ShowWheels = chkShowWheels.Checked; p.ShowGhost = chkShowGhost.Checked;
+            p.ShowFrontTrack = chkShowFrontTrack.Checked; p.ShowRadii = chkShowRadii.Checked;
+            p.ShowAllNodeVehicles = cboNodeVehicleDisplay.SelectedIndex == 1;
+            // 先赋齐所有字段，再校验挂车外扫与驾驶室，禁止校验时漏用 TrailerWidth=0。
+            if (!p.ValidateGeometry(out error)) return false;
+            double scale = GetSelectedScale();
+            if (!VehicleParams.IsFinite(scale) || scale <= 0)
+            { error = "图纸单位比例无效。"; return false; }
+            result = p.InUnitScale(scale);
+            return true;
+        }
+
+        private static bool Same(double a, double b)
+        { return Math.Abs(a - b) <= 1e-12 * Math.Max(1.0, Math.Max(Math.Abs(a), Math.Abs(b))); }
+
+        private static bool ReadFinite(TextBox box, string name, out double value, out string error)
+        {
+            error = null;
+            if (!double.TryParse(box.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out value) ||
+                !VehicleParams.IsFinite(value))
+            { error = name + "必须填写有限数字，不能留空或填写NaN/无穷大。"; return false; }
+            return true;
         }
 
         /// <summary>v4.9.22：触发侧面预览面板重绘。</summary>
@@ -447,14 +538,18 @@ namespace TruckTurn
             VehicleParams p;
             try { p = BuildPreviewParams(); }
             catch { return; }
-            if (p == null) return;
+            if (p == null)
+            {
+                VehicleParams ignored;
+                string error;
+                TryBuildParameters(out ignored, out error);
+                using (var brush = new SolidBrush(Color.FromArgb(165, 83, 54)))
+                    g.DrawString(error ?? "请输入有效尺寸。", this.Font, brush,
+                        new RectangleF(18, 24, pnlPreview.Width - 36, pnlPreview.Height - 48));
+                return;
+            }
 
-            double L;
-            if (p.Articulated)
-                L = (p.TractorFrontOverhang + p.TractorWheelbase + p.TractorRearToKingpin)
-                  + (p.TrailerKingpinToFront + p.TrailerKingpinToRearAxle + p.TrailerRearOverhang);
-            else
-                L = p.TractorFrontOverhang + p.TractorWheelbase + p.RigidRearOverhang;
+            double L = p.LengthMeters();
             if (double.IsNaN(L) || double.IsInfinity(L) || L < 1.0) L = 1.0;
 
             int pad = 20;
@@ -513,7 +608,8 @@ namespace TruckTurn
             float s = (float)scale;
             float Y(double m) { return groundY - (float)(m * s); }
             float x0 = cabFrontX, x1 = cabRearX;
-            if (x1 - x0 < 0.6f * s) x1 = x0 + 0.6f * s;
+            if (x1 <= x0) return;
+            float sx = Math.Min(s, (x1 - x0) / 0.8f); // 收窄装饰而非擅自加长驾驶室。
             float tm = Y(topM);
 
             using (var fill = new SolidBrush(Color.FromArgb(238, 243, 247)))
@@ -525,37 +621,37 @@ namespace TruckTurn
             {
                 var poly = new[]
                 {
-                    new PointF(x0 + 0.03f*s, Y(0.72f)),
+                    new PointF(x0 + 0.03f*sx, Y(0.72f)),
                     new PointF(x0,           Y(1.25f)),
-                    new PointF(x0 + 0.12f*s, Y(2.20f)),
-                    new PointF(x0 + 0.50f*s, tm),
-                    new PointF(x1 - 0.12f*s, tm),
+                    new PointF(x0 + 0.12f*sx, Y(2.20f)),
+                    new PointF(x0 + 0.50f*sx, tm),
+                    new PointF(x1 - 0.12f*sx, tm),
                     new PointF(x1,           tm + 0.13f*s),
                     new PointF(x1,           Y(0.72f)),
                 };
                 g.FillPolygon(fill, poly);
                 g.DrawPolygon(pen, poly);
 
-                g.FillRectangle(lower, x0 + 0.03f*s, Y(0.92f),
-                    x1 - x0 - 0.03f*s, 0.20f*s);
+                g.FillRectangle(lower, x0 + 0.03f*sx, Y(0.92f),
+                    x1 - x0 - 0.03f*sx, 0.20f*s);
 
                 // 一体式玻璃面，以一条立柱区分前风挡和侧窗。
                 var window = new[]
                 {
-                    new PointF(x0 + 0.16f*s, Y(2.18f)),
-                    new PointF(x0 + 0.52f*s, tm + 0.09f*s),
-                    new PointF(x1 - 0.17f*s, tm + 0.09f*s),
-                    new PointF(x1 - 0.17f*s, Y(2.18f)),
+                    new PointF(x0 + 0.16f*sx, Y(2.18f)),
+                    new PointF(x0 + 0.52f*sx, tm + 0.09f*s),
+                    new PointF(x1 - 0.17f*sx, tm + 0.09f*s),
+                    new PointF(x1 - 0.17f*sx, Y(2.18f)),
                 };
                 g.FillPolygon(glass, window);
                 g.DrawPolygon(pen, window);
-                float pillarX = x0 + 0.52f*s;
+                float pillarX = x0 + 0.52f*sx;
                 g.DrawLine(pen, pillarX, tm + 0.09f*s, pillarX, Y(2.18f));
-                float doorX = Math.Min(x1 - 0.16f*s, x0 + 0.62f*s);
+                float doorX = Math.Min(x1 - 0.16f*sx, x0 + 0.62f*sx);
                 g.DrawLine(thin, doorX, Y(0.76f), doorX, Y(2.12f));
-                g.DrawLine(thin, doorX + 0.08f*s, Y(1.80f),
-                    Math.Min(x1 - 0.08f*s, doorX + 0.24f*s), Y(1.80f));
-                g.FillRectangle(lamp, x0 + 0.02f*s, Y(1.35f), 0.12f*s, 0.09f*s);
+                g.DrawLine(thin, doorX + 0.08f*sx, Y(1.80f),
+                    Math.Min(x1 - 0.08f*sx, doorX + 0.24f*sx), Y(1.80f));
+                g.FillRectangle(lamp, x0 + 0.02f*sx, Y(1.35f), 0.12f*sx, 0.09f*s);
             }
         }
 
@@ -619,7 +715,7 @@ namespace TruckTurn
             }
         }
 
-        private static string Meters(double m) { return string.Format("{0:F2} m", m); }
+        private static string Meters(double m) { return m.ToString("0.######", CultureInfo.InvariantCulture) + " m"; }
 
         // ---- 刚性单车（车头朝左） ----
         private void DrawRigidSide(Graphics g, VehicleParams p, float s, float groundY, float xL, float xR, Font dimFont)
@@ -630,7 +726,7 @@ namespace TruckTurn
 
             float xFA = xL + (float)(foM * s);     // 前轴
             float xRA = xFA + (float)(wbM * s);    // 后轴（基准）
-            double cabRearM = foM + 0.60;          // 驾驶室后壁（前轴后 0.6m）
+            double cabRearM = p.RigidCabLengthMeters(); // 与CAD刚性车造型共用，不按前轴另造位置。
             float xCabRear = xL + (float)(cabRearM * s);
 
             // 货厢（驾驶室后壁 + 0.12m 缝 → 车尾）
@@ -655,10 +751,9 @@ namespace TruckTurn
                 }
             }
             // 车轮：前轴 + 后轴组（多轴向前排）
-            int axles = Math.Max(2, p.RigidAxles);
             DrawWheel(g, xFA, groundY, 0.52, s);
-            for (int i = 0; i < axles - 1; i++)
-                DrawWheel(g, xRA - (float)(1.35 * i * s), groundY, 0.52, s);
+            foreach (double offset in TruckKinematics.RearAxleOffsets(p, false))
+                DrawWheel(g, xRA - (float)(offset * s), groundY, 0.52, s);
 
             // 地面
             DrawGround(g, xL - 0.3f * s, xR + 0.3f * s, groundY);
@@ -682,18 +777,22 @@ namespace TruckTurn
             double laM = p.TrailerKingpinToRearAxle;
             double ro2M = p.TrailerRearOverhang;
 
-            float xTA = xR - (float)(ro2M * s);        // 挂车后轴（最右轴）
-            float xKp = xTA - (float)(laM * s);        // 鞍座
+            double localFront = Math.Max(foM + wbM, akM + tfM);
+            float xKp = xL + (float)((localFront - akM) * s); // 同CAD：鞍座=后轴+ak
+            float xTA = xKp + (float)(laM * s);        // 挂车最后后轴
+            float xTrailerRear = xTA + (float)(ro2M * s);
             float xTrF = xKp - (float)(tfM * s);       // 挂车前端
-            float xTRA = xKp - (float)(akM * s);       // 牵引车后轴
+            float xTRA = xKp + (float)(akM * s);       // 牵引车后轴：鞍座在其前方，屏幕向右是向后
             float xTFA = xTRA - (float)(wbM * s);      // 牵引车前轴
-            float xCabRear = xTFA + 0.60f * s;         // 驾驶室后壁
+            float xCabRear = xL + (float)((localFront - p.CabRearX()) * s);
+            float xTractorFront = xTFA - (float)(foM * s);
+            float xChassisRear = xTRA + (float)(p.ChassisRearOverhang * s);
 
             // 挂车货厢（先画，之后牵引车底盘压在其上视觉正确）
-            DrawCargoBox(g, s, groundY, xTrF + 0.05f * s, xR, 1.20, 3.55);
+            DrawCargoBox(g, s, groundY, xTrF, xTrailerRear, 1.20, 3.55);
             // 牵引车底盘 + 驾驶室
-            DrawChassis(g, s, groundY, xL + 0.10f * s, xKp + 0.30f * s);
-            DrawCab(g, s, groundY, xL, xCabRear, 3.20);
+            DrawChassis(g, s, groundY, xTractorFront, xChassisRear);
+            DrawCab(g, s, groundY, xTractorFront, xCabRear, 3.20);
             // 鞍座（第五轮）
             using (var fw = new SolidBrush(Color.FromArgb(70, 82, 92)))
             {
@@ -713,8 +812,8 @@ namespace TruckTurn
             // 车轮：牵引车前轴 / 后轴；挂车 1~3 轴（向前排）
             DrawWheel(g, xTFA, groundY, 0.52, s);
             DrawWheel(g, xTRA, groundY, 0.52, s);
-            for (int i = 0; i < Math.Max(1, p.TrailerAxles); i++)
-                DrawWheel(g, xTA - (float)(1.35 * i * s), groundY, 0.52, s);
+            foreach (double offset in TruckKinematics.RearAxleOffsets(p, true))
+                DrawWheel(g, xTA - (float)(offset * s), groundY, 0.52, s);
 
             // 地面
             DrawGround(g, xL - 0.3f * s, xR + 0.3f * s, groundY);
@@ -722,9 +821,9 @@ namespace TruckTurn
             // 尺寸：顶部两行（列车总长 / 牵引车+挂车分段）；底部（前悬 / 轴距 / 鞍座-挂车后轴）
             float yTop1 = groundY - 3.60f * s - 26;
             float yTop2 = yTop1 - 20;
-            DrawHDim(g, dimFont, xL, xR, yTop2, "列车总长 " + Meters((foM + wbM + akM) + (tfM + laM + ro2M)));
-            DrawHDim(g, dimFont, xL, xKp, yTop1, "牵引车 " + Meters(foM + wbM + akM));
-            DrawHDim(g, dimFont, xTrF, xR, yTop1, "挂车 " + Meters(tfM + laM + ro2M));
+            DrawHDim(g, dimFont, xL, xR, yTop2, "列车总长 " + Meters(p.LengthMeters()));
+            DrawHDim(g, dimFont, xTractorFront, xChassisRear, yTop1, "牵引车全长 " + Meters(p.TractorLengthMeters()));
+            DrawHDim(g, dimFont, xTrF, xTrailerRear, yTop1, "挂车全长 " + Meters(p.TrailerLengthMeters()));
             float yBot = groundY + 18;
             if (foM * s > 46) DrawHDim(g, dimFont, xL, xTFA, yBot, Meters(foM));
             if (wbM * s > 46) DrawHDim(g, dimFont, xTFA, xTRA, yBot, "轴距 " + Meters(wbM));
@@ -749,120 +848,19 @@ namespace TruckTurn
         {
             fo = Math.Min(1.5, Math.Max(1.1, 0.12 * totalM));
             ro = Math.Min(2.6, Math.Max(0.8, 0.20 * totalM));
-            wb = Math.Max(1.2, totalM - fo - ro);
+            wb = totalM - fo - ro; // 由确认校验拒绝不合法的短车，禁止静默加长。
         }
 
         private bool BuildResult()
         {
-            var p = new VehicleParams();
-            p.Articulated = chkArticulated.Checked;
-            p.SteerAngleDeg = ParseD(txtSteer.Text, 18);
-            p.TurnAngleDeg = 90;
-            p.UnitScale = GetSelectedScale();
-
-            double scale = p.UnitScale;
-            double wM = ParseD(txtWidth.Text, 2.5);
-            double wDrawing = wM * scale;
-            double trackM = Math.Max(0.9, wM * 0.75);   // 物理轮距 ≈ 车宽*0.75，至少 0.9m
-            p.WheelTrack = trackM * scale;
-
-            // v4.4 图层显示选项
-            p.ShowEnvelope = chkShowEnvelope.Checked;
-            p.ShowBody = chkShowBody.Checked;
-            p.ShowWheels = chkShowWheels.Checked;
-            p.ShowGhost = chkShowGhost.Checked;
-            p.ShowFrontTrack = chkShowFrontTrack.Checked;
-            p.ShowRadii = chkShowRadii.Checked;
-            p.ShowAllNodeVehicles = cboNodeVehicleDisplay.SelectedIndex == 1;
-
-            // v4.4 最大铰接角（仅铰接有效，刚性忽略）
-            p.MaxArticulationAngleDeg = Math.Max(10.0, ParseD(txtMaxArticulation.Text, 90.0));
-
-            if (p.Articulated)
+            VehicleParams result;
+            string error;
+            if (!TryBuildParameters(out result, out error))
             {
-                double tractorM = ParseD(txtTractorLen.Text, 6.0);
-                double trailerM = ParseD(txtMainLen.Text, 11.0);
-                double tractorDrawing = tractorM * scale;
-                double trailerDrawing = trailerM * scale;
-
-                // v4.4：驾驶室后壁到鞍座、挂车前端到鞍座
-                double kpCabRearM = Math.Max(0.0, ParseD(txtKingpinToCabRear.Text, 0.21 * tractorM));
-                double kpTrailerFrontM = Math.Max(0.0, ParseD(txtTrailerKingpinToFront.Text, 0.03 * trailerM));
-                p.KingpinToCabRear = kpCabRearM * scale;
-                p.TrailerKingpinToFront = kpTrailerFrontM * scale;
-                p.ChassisWidth = Math.Min(wDrawing, 1.0 * scale);   // 车架纵梁约 1m
-                p.CabClearance = 0.1 * scale;
-
-                // 牵引车纵向布局（以后轴为原点，向前为正）：
-                //   车架尾端 = -ChassisRearOverhang，鞍座 = +后轴到鞍座，驾驶室后壁 = 鞍座 + KingpinToCabRear，
-                //   车头 = 轴距 + 前悬。四段之和 = 牵引车总长。
-                p.ChassisRearOverhang = 0.15 * tractorDrawing;
-                p.TractorFrontOverhang = 0.25 * tractorDrawing;
-                p.TractorWheelbase = 0.60 * tractorDrawing;
-                p.TractorRearToKingpin = 0.10 * tractorDrawing;
-                p.TractorWidth = wDrawing;
-
-                // 守卫：驾驶室后壁必须留在车头之前，且驾驶室至少占轴距的 25%。
-                // 安全下限由 CabRearX() 依据挂车前角最大摆幅反推，两者冲突说明车太短/挂车太宽。
-                double frontX = p.TractorWheelbase + p.TractorFrontOverhang;
-                double cabRearLimit = frontX - 0.25 * p.TractorWheelbase;
-                if (p.CabRearX() > cabRearLimit)
-                {
-                    p.KingpinToCabRear = Math.Max(0.0, cabRearLimit - p.TractorRearToKingpin);
-                    if (p.CabRearX() > cabRearLimit)
-                    {
-                        MessageBox.Show(this, "牵引车过短或挂车过宽：按当前尺寸，挂车转弯时无法避开驾驶室。请加长牵引车或减小车宽。",
-                                        "货车选型", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return false;
-                    }
-                }
-
-                // v4.6.1：守卫用到的 TrailerRearOverhang 必须在守卫之前算出来。
-                // 之前 p.TrailerRearOverhang 还是 new VehicleParams() 的初始值 0，
-                // 这条「挂车前端到鞍座 + 后悬 > 挂车总长」的校验形同虚设。
-                double tre = 0.12 * trailerDrawing;
-                p.TrailerRearOverhang = tre;
-                double trailerGap = p.TrailerKingpinToFront + p.TrailerRearOverhang;
-                if (trailerGap >= trailerDrawing - 1e-3)
-                {
-                    MessageBox.Show(this, "挂车前端到鞍座距离+后悬过大，已超过挂车总长。", "货车选型", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return false;
-                }
-                p.TrailerKingpinToRearAxle = Math.Max(scale, trailerDrawing - tre - p.TrailerKingpinToFront);
-                p.TrailerWidth = wDrawing;
-                p.TrailerAxles = (int)Math.Max(1, Math.Min(3, ParseD(txtAxles.Text, 3)));
-                p.RigidRearOverhang = 0;
-                p.RigidAxles = 2;
-            }
-            else
-            {
-                double totalM = ParseD(txtMainLen.Text, 8.0);
-                double totalDrawing = totalM * scale;
-                RigidLayoutM(totalM, out double foM, out double wbM, out double roM);
-                p.TractorFrontOverhang = foM * scale;
-                p.TractorWheelbase = wbM * scale;
-                p.TractorRearToKingpin = 0;
-                p.TractorWidth = wDrawing;
-                p.RigidRearOverhang = roM * scale;
-                p.RigidAxles = (int)Math.Max(2, Math.Min(6, ParseD(txtAxles.Text, 2)));
-                p.TrailerKingpinToRearAxle = 0;
-                p.TrailerRearOverhang = 0;
-                p.TrailerWidth = wDrawing;
-                p.TrailerAxles = 3;
-                p.KingpinToCabRear = 0;
-                p.TrailerKingpinToFront = 0;
-                p.ChassisRearOverhang = 0;
-                p.ChassisWidth = wDrawing;
-                p.CabClearance = 0;
-            }
-
-            // 合理性守卫：轴距/长必须为正，否则无法计算转弯半径
-            if (p.TractorWheelbase <= 1e-6)
-            {
-                MessageBox.Show(this, "车长/轴距无效，请检查输入。", "货车选型", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, error, "货车选型", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
-            Result = p;
+            Result = result;
             return true;
         }
 

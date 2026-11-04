@@ -12,7 +12,10 @@
     <!-- 关闭隐式 using 与可空，保持与原代码一致 -->
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>5.4.0</Version>
+    <AssemblyVersion>5.4.0.0</AssemblyVersion>
+    <FileVersion>5.4.0.0</FileVersion>
     <!-- 自动包含目录下全部 .cs，避免漏写 Compile 项 -->
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <!-- 生成 DLL 供 NETLOAD 加载 -->

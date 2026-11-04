@@ -71,48 +71,18 @@ namespace TruckTurn
             if (frames == null || frames.Count < 2 ||
                 (!p.ShowWheels && !p.ShowFrontTrack)) return null;
 
-            var tracks = new List<Point2d>[7];
-            for (int i = 0; i < tracks.Length; i++) tracks[i] = new List<Point2d>();
-            double half = p.WheelTrack / 2.0;
-            foreach (var f in frames)
-            {
-                Vector2d n1 = new Vector2d(-f.U1.Y, f.U1.X);
-                Vector2d n2 = new Vector2d(-f.U2.Y, f.U2.X);
-                Point2d frontAxle = f.O1 + p.TractorWheelbase * f.U1;
-                tracks[0].Add(frontAxle);
-                tracks[1].Add(frontAxle + half * n1);
-                tracks[2].Add(frontAxle - half * n1);
-                tracks[3].Add(f.O1 + half * n1);
-                tracks[4].Add(f.O1 - half * n1);
-                if (p.Articulated)
-                {
-                    tracks[5].Add(f.O2 + half * n2);
-                    tracks[6].Add(f.O2 - half * n2);
-                }
-            }
-            return tracks;
+            return TruckKinematics.BuildWheelCenterTracks(frames, p, p.ShowWheels);
         }
 
         public static void DrawWheelTracks(
             GI.WorldDraw draw, List<Point2d>[] tracks, VehicleParams p)
         {
-            if (tracks == null || tracks.Length < 7) return;
-
-            if (p.ShowFrontTrack)
-            {
-                SetColor(draw, 6);
-                Poly(draw, tracks[0], false);
-            }
-
+            if (tracks == null || tracks.Length == 0) return;
+            if (p.ShowFrontTrack) { SetColor(draw, 6); Poly(draw, tracks[0], false); }
             if (p.ShowWheels)
             {
                 SetColor(draw, 1);
-                Poly(draw, tracks[1], false); Poly(draw, tracks[2], false);
-                Poly(draw, tracks[3], false); Poly(draw, tracks[4], false);
-                if (p.Articulated)
-                {
-                    Poly(draw, tracks[5], false); Poly(draw, tracks[6], false);
-                }
+                for (int i = 1; i < tracks.Length; i++) Poly(draw, tracks[i], false);
             }
         }
 
@@ -160,7 +130,8 @@ namespace TruckTurn
             //   误识别为圆弧段画成小圆凸起 —— 用户实机看到的「车头/车尾包络凸起」。
             //   大 RDP(5cm) 直接把近似共线段压成 2 个端点，35 顶点画 Polyline 已经够光滑，
             //   且与出图 Spline 的几何完全一致。
-            var (simpPts, _) = GeometryUtil.SimplifyEnvelopeForSpline(envelope, 0.05);
+            var (simpPts, _) = GeometryUtil.SimplifyEnvelopeForSpline(
+                envelope, 0.05, unitScale: p.UnitScale);
             if (simpPts == null || simpPts.Count < 3) return;
 
             SetColor(draw, 2);

@@ -251,11 +251,16 @@ namespace TruckTurn
             allIds.AddRange(cumulativeEnvelopeIds);
 
             stage = "跨运车路径打块";
-            GroupIntoBlock(db, ed, allIds);
+            PlaybackRoute replayRoute = null;
+            try { replayRoute = PlaybackRouteFactory.FromCarrier(parameters, allFrames, "集装箱搬运车轨迹"); }
+            catch (System.Exception ex) { ed.WriteMessage("\n本次保留静态轨迹，动画快照未生成：{0}", ex.Message); }
+            ObjectId playbackBlockId = GroupIntoBlock(db, ed, allIds, replayRoute);
             ed.Regen();
             ed.WriteMessage(
                 "\nCARRIERDRIVE 完成：{0} 段、{1} 帧。结果已按设备/箱体/安全/轮迹分层并整体成块。",
                 segmentNumber, allFrames.Count);
+            if (segmentNumber > 0 && replayRoute != null)
+                PlaybackCommands.OfferPlayback(doc, playbackBlockId);
         }
 
         static void DrawSegment(
@@ -511,7 +516,8 @@ namespace TruckTurn
             }
         }
 
-        static void GroupIntoBlock(Database db, Editor ed, IList<ObjectId> ids)
+        static ObjectId GroupIntoBlock(Database db, Editor ed, IList<ObjectId> ids,
+            PlaybackRoute replayRoute = null)
         {
             var unique = new List<ObjectId>();
             var seen = new HashSet<ObjectId>();
@@ -520,7 +526,7 @@ namespace TruckTurn
                 ObjectId id = ids[i];
                 if (!id.IsNull && id.IsValid && !id.IsErased && seen.Add(id)) unique.Add(id);
             }
-            if (unique.Count == 0) return;
+            if (unique.Count == 0) return ObjectId.Null;
 
             try
             {
@@ -542,6 +548,8 @@ namespace TruckTurn
                     reference.SetDatabaseDefaults();
                     space.AppendEntity(reference);
                     tr.AddNewlyCreatedDBObject(reference, true);
+                    if (replayRoute != null)
+                        PlaybackCadStore.Attach(db, tr, reference, replayRoute);
                     for (int i = 0; i < unique.Count; i++)
                     {
                         Entity entity = tr.GetObject(unique[i], OpenMode.ForWrite, false) as Entity;
@@ -549,12 +557,14 @@ namespace TruckTurn
                     }
                     tr.Commit();
                     ed.WriteMessage("\n[块] 已生成「{0}」，包含 {1} 个图元。", name, unique.Count);
+                    return reference.ObjectId;
                 }
             }
             catch (System.Exception ex)
             {
                 ed.WriteMessage("\n[块] 打块失败（{0}: {1}），原图元已保留。",
                     ex.GetType().Name, ex.Message);
+                return ObjectId.Null;
             }
         }
 

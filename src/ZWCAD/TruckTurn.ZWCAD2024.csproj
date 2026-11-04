@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <ZwcadYear>2024</ZwcadYear>
+    <AssemblyName>TruckTurn.ZWCAD2024</AssemblyName>
+    <AssemblyTitle>TruckTurn for ZWCAD 2024 x64</AssemblyTitle>
+  </PropertyGroup>
+</Project>

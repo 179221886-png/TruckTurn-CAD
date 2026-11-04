@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace TruckTurn
 {
@@ -120,7 +121,8 @@ namespace TruckTurn
             CarrierSteeringCapabilities.Crab |
             CarrierSteeringCapabilities.Lateral;
 
-        // 车体外廓与轮位，单位 m。默认值仅用于通用算法演示，不代表厂家车型。
+        // 整机矩形外廓（含允许转角范围内的轮胎，不含集装箱/安全裕量）与轮位，单位 m。
+        // 默认值仅用于通用算法演示，不代表厂家车型；不能用车架宽度代替整机宽度。
         public double OverallLength = 8.0;
         public double OverallWidth = 6.0;
         public double Wheelbase = 6.0;
@@ -190,6 +192,51 @@ namespace TruckTurn
             return p;
         }
 
+        /// <summary>当前参数均为值类型或不可变字符串；复制后可独立编辑，不污染原图纸参数。</summary>
+        public CarrierParams Clone()
+        {
+            return (CarrierParams)MemberwiseClone();
+        }
+
+        /// <summary>
+        /// 包含各轮独立轮位及所有已启用转向能力允许轮角的最小居中矩形外廓。
+        /// 使用矩形轮胎解析投影极值，而不是只检查正直轮胎或少量采样角。
+        /// </summary>
+        public void RequiredEquipmentExtents(out double length, out double width)
+        {
+            double hx = 0.0, hy = 0.0;
+            CarrierWheelLocation[] wheels = ResolvedWheelLocations();
+            for (int i = 0; i < wheels.Length; i++)
+            {
+                CarrierWheelLocation wheel = wheels[i];
+                double limit = WheelCanSteer(i)
+                    ? Math.Min(90.0, wheel.MaxSteerAngleDeg) * Math.PI / 180.0 : 0.0;
+                double a = WheelLength * 0.5, b = WheelWidth * 0.5;
+                double px = MaximumProjection(a, b, limit);
+                double py = MaximumProjection(b, a, limit);
+                hx = Math.Max(hx, Math.Abs(wheel.X) + px);
+                hy = Math.Max(hy, Math.Abs(wheel.Y) + py);
+            }
+            length = 2.0 * hx;
+            width = 2.0 * hy;
+        }
+
+        bool WheelCanSteer(int index)
+        {
+            if (Supports(CarrierSteeringMode.CounterPhaseFourWheel) ||
+                Supports(CarrierSteeringMode.Crab) || Supports(CarrierSteeringMode.Lateral) ||
+                Supports(CarrierSteeringMode.Pivot)) return true;
+            return index < 2 ? Supports(CarrierSteeringMode.FrontOnly)
+                             : Supports(CarrierSteeringMode.RearOnly);
+        }
+
+        static double MaximumProjection(double cosineCoefficient, double sineCoefficient, double limit)
+        {
+            double peak = Math.Atan2(sineCoefficient, cosineCoefficient);
+            double angle = Math.Max(0.0, Math.Min(limit, peak));
+            return cosineCoefficient * Math.Cos(angle) + sineCoefficient * Math.Sin(angle);
+        }
+
         public CarrierWheelLocation[] ResolvedWheelLocations()
         {
             double hx = Wheelbase * 0.5;
@@ -239,7 +286,8 @@ namespace TruckTurn
             }
         }
 
-        public List<string> Validate()
+        /// <param name="checkExterior">新建/编辑车型须为 true；只读旧动画可跳过新增的外廓业务约束。</param>
+        public List<string> Validate(bool checkExterior = true)
         {
             var errors = new List<string>();
             if (SchemaVersion != CurrentSchemaVersion) errors.Add("不支持的 CarrierParams schemaVersion。 ");
@@ -256,19 +304,48 @@ namespace TruckTurn
             if (!Positive(UnitScale)) errors.Add("UnitScale 必须大于 0。 ");
             if (Architecture == CarrierArchitecture.MultiAxle)
                 errors.Add("V1 运动学内核暂不支持多轴跨运车。 ");
+            if (!Enum.IsDefined(typeof(CarrierArchitecture), Architecture))
+                errors.Add("运动学架构无效。 ");
             if (!Supports(CarrierSteeringMode.Longitudinal))
                 errors.Add("车型至少必须支持纵向行驶。 ");
 
             var wheels = ResolvedWheelLocations();
+            bool validWheels = Positive(WheelLength) && Positive(WheelWidth);
             for (int i = 0; i < wheels.Length; i++)
             {
                 CarrierWheelLocation w = wheels[i];
-                if (!Finite(w.X) || !Finite(w.Y)) errors.Add(w.Id + " 轮位坐标无效。 ");
+                if (!Finite(w.X) || !Finite(w.Y))
+                {
+                    errors.Add(w.Id + " 轮位坐标无效。 ");
+                    validWheels = false;
+                }
                 if (!(w.MaxSteerAngleDeg > 0.0 && w.MaxSteerAngleDeg <= 180.0) ||
                     !Finite(w.MaxSteerAngleDeg))
+                {
                     errors.Add(w.Id + " 最大转角必须在 (0, 180] 度。 ");
+                    validWheels = false;
+                }
             }
 
+            if (checkExterior && validWheels)
+            {
+                double requiredLength, requiredWidth;
+                RequiredEquipmentExtents(out requiredLength, out requiredWidth);
+                if (Positive(OverallLength) && OverallLength + 1e-9 < requiredLength)
+                    errors.Add("整机长度须包含轮胎在已启用转向范围内的外廓，当前轮位至少需要 " +
+                        ExtentNumber(requiredLength) + " m；请增大整机长度或核实轮位、胎长和转角。");
+                if (Positive(OverallWidth) && OverallWidth + 1e-9 < requiredWidth)
+                    errors.Add("整机宽度须包含轮胎在已启用转向范围内的外廓，当前轮位至少需要 " +
+                        ExtentNumber(requiredWidth) + " m；轮距是轮心间距，不能作为整机宽度。");
+            }
+
+            if (!Enum.IsDefined(typeof(CarrierContainerPreset), ContainerPreset))
+            {
+                errors.Add("集装箱选型无效。 ");
+                return errors;
+            }
+            if (!Finite(Twin20Gap) || Twin20Gap < 0.0)
+                errors.Add("双20英尺箱间距必须为有限非负数。 ");
             CarrierContainerDimensions c = ContainerDimensions();
             if (ContainerPreset != CarrierContainerPreset.None &&
                 (!Positive(c.Length) || !Positive(c.Width) || !Positive(c.Height)))
@@ -278,10 +355,24 @@ namespace TruckTurn
             return errors;
         }
 
+        public bool TryValidate(out string error)
+        {
+            List<string> errors = Validate();
+            error = string.Join("\n", errors);
+            return errors.Count == 0;
+        }
+
+        static string ExtentNumber(double value)
+        {
+            // 向上取至毫米，保证提示值不会因四舍五入仍小于实际必需值。
+            return (Math.Ceiling(value * 1000.0 - 1e-9) / 1000.0)
+                .ToString("0.###", CultureInfo.InvariantCulture);
+        }
+
         static CarrierWheelLocation Resolve(CarrierWheelLocation input, double defaultX, double defaultY)
         {
-            input.X = Finite(input.X) ? input.X : defaultX;
-            input.Y = Finite(input.Y) ? input.Y : defaultY;
+            input.X = double.IsNaN(input.X) ? defaultX : input.X;
+            input.Y = double.IsNaN(input.Y) ? defaultY : input.Y;
             return input;
         }
 

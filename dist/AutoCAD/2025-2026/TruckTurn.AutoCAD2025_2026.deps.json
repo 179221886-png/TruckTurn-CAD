@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v8.0": {
-      "TruckTurn.AutoCAD2025_2026/5.3.0": {
+      "TruckTurn.AutoCAD2025_2026/5.4.0": {
         "dependencies": {
           "AutoCAD.NET": "25.0.1"
         },
@@ -28,7 +28,7 @@
     }
   },
   "libraries": {
-    "TruckTurn.AutoCAD2025_2026/5.3.0": {
+    "TruckTurn.AutoCAD2025_2026/5.4.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

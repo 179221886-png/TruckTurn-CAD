@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <ZwcadSdkDir Condition="'$(ZwcadSdkDir)' == ''">$(MSBuildThisFileDirectory)lib\$(ZwcadYear)</ZwcadSdkDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ZwManaged">
+      <HintPath>$(ZwcadSdkDir)\ZwManaged.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ZwDatabaseMgd">
+      <HintPath>$(ZwcadSdkDir)\ZwDatabaseMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <Target Name="RequireZwcadSdk" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(ZwcadSdkDir)\ZwManaged.dll') Or !Exists('$(ZwcadSdkDir)\ZwDatabaseMgd.dll')"
+      Text="ZWCAD $(ZwcadYear) API references missing. Set -p:ZwcadSdkDir=PATH to the matching Windows x64 SDK/installation; do not ship these host DLLs." />
+  </Target>
+</Project>
