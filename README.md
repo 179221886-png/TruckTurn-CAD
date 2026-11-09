@@ -6,6 +6,14 @@
 
 [下载三平台交付包](https://github.com/179221886-png/TruckTurn-CAD/releases/tag/v5.4.0) · [安装及操作指南](docs/TruckTurn_5.4_安装与使用指南.md) · [本次更新](RELEASE_NOTES.md)
 
+## 功能演示
+
+[![TruckTurn 功能演示：货车与集装箱搬运车轨迹模拟](docs/media/truckturn-demo-v5.3-poster.png)](https://github.com/179221886-png/TruckTurn-CAD/blob/main/docs/media/truckturn-demo-v5.3.mp4)
+
+点击封面查看演示视频（约1分27秒），或[下载MP4](https://raw.githubusercontent.com/179221886-png/TruckTurn-CAD/main/docs/media/truckturn-demo-v5.3.mp4)。
+
+展示货车及铰接半挂转弯、集装箱搬运车四种转向方式、累计外包络与首尾车体显示。视频由真实插件界面截图与算法动画组成，非CAD操作实录；对应5.3系列，5.4新增的消防车、轨迹播放和中望CAD适配请见[更新说明](RELEASE_NOTES.md)。
+
 ## 版本选择
 
 |CAD软件|年份|目标运行时|DLL位置|
